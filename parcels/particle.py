@@ -6,7 +6,7 @@ from collections import OrderedDict
 import math
 
 __all__ = ['Particle', 'ParticleSet', 'JITParticle',
-           'ParticleFile', 'AdvectionRK4']
+           'ParticleFile', 'AdvectionRK4', 'AdvectionEE']
 
 
 def AdvectionRK4(particle, grid, time, dt):
@@ -23,6 +23,13 @@ def AdvectionRK4(particle, grid, time, dt):
     particle.lon += (u1 + 2*u2 + 2*u3 + u4) / 6. * f_lon
     particle.lat += (v1 + 2*v2 + 2*v3 + v4) / 6. * f_lat
 
+def AdvectionEE(particle, grid, time, dt):
+    f_lat = dt / 1000. / 1.852 / 60.
+    f_lon = f_lat / math.cos(particle.lat*math.pi/180)
+    u1 = grid.U[time, particle.lon, particle.lat]
+    v1 = grid.V[time, particle.lon, particle.lat]
+    particle.lon += u1 * f_lon
+    particle.lat += v1 * f_lat
 
 class Particle(object):
     """Class encapsualting the basic attributes of a particle
