@@ -36,18 +36,15 @@ def ground_truth(x_0, y_0, time, dt, pset, output_file):
 
 
 def analytical_eddies_grid(xdim=20, ydim=20):
-    """Generate a grid encapsulating the flow field consisting of two
-    moving eddies, one moving westward and the other moving northwestward.
+    """Generate a grid encapsulating the flow field describing a stationary
+    eddy, an eddy moving eastward or an decaying eddy moving eastward.
 
-    The original test description can be found in: K. Doos,
-    J. Kjellsson and B. F. Jonsson. 2013 TRACMASS - A Lagrangian
-    Trajectory Model, in Preventive Methods for Coastal Protection,
-    T. Soomere and E. Quak (Eds.),
-    http://www.springer.com/gb/book/9783319004396
+    The original test description can be found in: N. Fabbroni 2009 Numerical
+    simulations of passive tracers dispersion in the sea
     """
     # Set NEMO grid variables
     depth = np.zeros(1, dtype=np.float32)
-    time = np.arange(0., 100. * 86400., 864., dtype=np.float64)
+    time = np.arange(0., 20. * 86400., 150., dtype=np.float64)
 
     # Coordinates of the test grid (on A-grid in deg)
     lon = np.linspace(0, 4, xdim, dtype=np.float32)
@@ -60,7 +57,7 @@ def analytical_eddies_grid(xdim=20, ydim=20):
     P = np.zeros((lon.size, lat.size, time.size), dtype=np.float32)
 
     # Some constants
-    f = 1.e-4  # Coriolis parameter
+    f = 1.e-4
     u_0 = 0.3
     u_g = 0.04
     gamma = 1/(86400. * 2.89)
@@ -88,7 +85,7 @@ def analytical_eddies_grid(xdim=20, ydim=20):
 
 def analytical_eddies_example(grid, npart=1, mode='jit', verbose=False,
                           method=AdvectionRK4):
-    """Configuration of a particle set that follows two moving eddies
+    """Configuration of a particle set that follows the eddy
 
     :arg grid: :class NEMOGrid: that defines the flow field
     :arg npart: Number of particles to intialise"""
@@ -97,27 +94,26 @@ def analytical_eddies_example(grid, npart=1, mode='jit', verbose=False,
     ParticleClass = JITParticle if mode == 'jit' else Particle
 
     pset = grid.ParticleSet(size=npart, pclass=ParticleClass,
-                            start=(1., 49.), finish=(1., 49.))
+                            start=(1., 45.), finish=(1., 45.))
 
     if verbose:
         print("Initial particle positions:\n%s" % pset)
 
-    # Execte for 25 days, with 5min timesteps and hourly output
-    hours = 3*24   #10*24
+    # Execute for 3 days, with 5min timesteps and hourly output
+    hours = 3*24
     substeps = 1
-    #dt = 300
-    dt = 7200
+    dt = 600
     print("MovingEddies: Advecting %d particles for %d timesteps"
           % (npart, hours * substeps * 3600 / dt))
-    pset.execute(method, timesteps=hours*substeps*3600/dt, dt=dt,#dt=300.,
+    pset.execute(method, timesteps=hours*substeps*3600/dt, dt=dt,
                  output_file=pset.ParticleFile(name="AnalyticalParticle" + method.__name__),
                  output_steps=substeps)
 
     #Analytical solution
     if 1:
         pset_a = grid.ParticleSet(size=npart, pclass=ParticleClass,
-                            start=(1., 49.), finish=(1., 49.))
-        ground_truth(1., 49., hours*substeps*3600, dt, pset_a,
+                            start=(1., 45.), finish=(1., 45.))
+        ground_truth(1., 45., hours*substeps*3600, dt, pset_a,
                      output_file=pset_a.ParticleFile(name="GroundTruthParticle"))
 
     if verbose:
