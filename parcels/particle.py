@@ -140,6 +140,29 @@ class JITParticle(Particle):
             self._cptr.__setitem__(key, value)
 
 
+class TimeParticle(Particle):
+    """Class encapsualting the basic attributes of a particle
+
+    :param lon: Initial longitude of particle
+    :param lat: Initial latitude of particle
+    :param time: Initial time of particle
+    :param grid: :Class Grid: object to track this particle on
+    """
+
+    def __init__(self, lon, lat, grid, dt=3600, t=0, cptr=None):
+        self.lon = lon
+        self.lat = lat
+        self.time = t
+        self.dt = dt
+
+        self.xi = np.where(self.lon >= grid.U.lon)[0][-1]
+        self.yi = np.where(self.lat >= grid.U.lat)[0][-1]
+
+    def __repr__(self):
+        return "P(%f, %f, %f)[%d, %d]" % (self.lon, self.lat, self.time, self.xi,
+                                          self.yi)
+
+
 class ParticleType(object):
     """Class encapsulating the type information for custom particles
 
