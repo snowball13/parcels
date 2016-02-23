@@ -290,7 +290,7 @@ class ParticleSet(object):
         self.particles[key] = value
 
     def execute(self, pyfunc=AdvectionRK4, time=None, dt=1., timesteps=1,
-                output_file=None, output_steps=-1):
+                output_file=None, output_steps=-1, tol=None):
         """Execute a given kernel function over the particle set for
         multiple timesteps. Optionally also provide sub-timestepping
         for particle output.
@@ -319,11 +319,20 @@ class ParticleSet(object):
         timeleaps = int(timesteps / output_steps)
         # Execute kernel in sub-stepping intervals (leaps)
         current = time or self.grid.time[0]
-        for _ in range(timeleaps):
-            self.kernel.execute(self, output_steps, current, dt)
-            current += output_steps * dt
-            if output_file:
-                output_file.write(self, current)
+
+        if self.kernel.funcname == 'AdvectionRK45UpdateP':
+            end_time = timesteps * self.particles[0].dt
+            for p in self:
+                while p.time <= end_time:
+                    self.kernel.execute_adaptive(p, self.grid, tol)
+                    if output_file:
+                        output_file.write(self, p.time)
+        else:
+            for _ in range(timeleaps):
+                self.kernel.execute(self, output_steps, current, dt)
+                current += output_steps * dt
+                if output_file:
+                    output_file.write(self, current)
 
     def show(self, **kwargs):
         import matplotlib.pyplot as plt
