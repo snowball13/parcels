@@ -74,6 +74,9 @@ class Kernel(object):
                     self.pyfunc(p, pset.grid, time, dt)
                 time += dt
 
+    def execute_adaptive(self, p, grid, tol):
+        self.pyfunc(p, grid, tol)
+
     def merge(self, kernel):
         funcname = self.funcname + kernel.funcname
         func_ast = FunctionDef(name=funcname, args=self.py_ast.args,
