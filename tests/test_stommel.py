@@ -1,9 +1,11 @@
-from parcels import NEMOGrid, Particle, JITParticle, AdvectionRK4, AdvectionEE
+from parcels import NEMOGrid, Particle, JITParticle, TimeParticle,\
+                    AdvectionRK4, AdvectionEE, AdvectionRK45
 from argparse import ArgumentParser
 import numpy as np
 import math
 import pytest
 import matplotlib.pyplot as plt
+import time
 
 
 def analytical_eddies_grid(xdim=200, ydim=200):
@@ -41,9 +43,11 @@ def analytical_eddies_grid(xdim=200, ydim=200):
     for t in range(time.size):
         for i in range(lon.size):
             for j in range(lat.size):
-                U[i, j, t] = -(1 - math.exp(-lon[i] * math.pi / 180 / e_s) - lon[i] * math.pi / 180) * math.pi ** 2 *\
+                U[i, j, t] = -(1 - math.exp(-lon[i] * math.pi / 180 / e_s) -\
+                            lon[i] * math.pi / 180) * math.pi ** 2 *\
                             math.cos(math.pi ** 2 * lat[j] / 180)
-                V[i, j, t] = (math.exp(-lon[i] * math.pi / 180 / e_s) / e_s - 1) * math.pi * math.sin(math.pi ** 2 * lat[j] / 180)
+                V[i, j, t] = (math.exp(-lon[i] * math.pi / 180 / e_s) / e_s -\
+                            1) * math.pi * math.sin(math.pi ** 2 * lat[j] / 180)
 
     return NEMOGrid.from_data(U, lon, lat, V, lon, lat,
                               depth, time, field_data={'P': P})
@@ -58,26 +62,43 @@ def analytical_eddies_example(grid, npart=1, mode='jit', verbose=False,
 
     # Determine particle class according to mode
     ParticleClass = JITParticle if mode == 'jit' else Particle
+    if method == AdvectionRK45: ParticleClass = TimeParticle
 
     pset = grid.ParticleSet(size=npart, pclass=ParticleClass,
-                            start=(10., 50.), finish=(10., 50.))
+                            start=(10., 50.), finish=(7., 30.))
 #                            start=(7., 30.), finish=(10., 50.))
 
     if verbose:
         print("Initial particle positions:\n%s" % pset)
 
     # Execute for 25 days, with 5min timesteps and hourly output
-    hours = 1000*24
+    hours = 100*24.
     substeps = 1
-    dt = 1200
-    print("MovingEddies: Advecting %d particles for %d timesteps"
-          % (npart, hours * substeps * 3600 / dt))
-    pset.execute(method, timesteps=hours*substeps*3600/dt, dt=dt,
-                 output_file=pset.ParticleFile(name="StommelParticle" + method.__name__),
-                 output_steps=substeps)
+    dt = 2400
 
+    tic = time.clock()
+
+    if method == AdvectionRK45:
+        for particle in pset:
+            particle.time = 0.
+            particle.dt = dt
+        tol = 1e-6 #3e-5
+        print("MovingEddies: Advecting %d particles with adaptive step size"
+              % (npart))
+        pset.execute(method, timesteps=hours*substeps*3600/dt, dt=dt,
+                     output_file=pset.ParticleFile(name="StommelParticle" + method.__name__),
+                     output_steps=substeps, tol=tol)
+    else:
+        print("MovingEddies: Advecting %d particles for %d timesteps"
+              % (npart, hours * substeps * 3600 / dt))
+        pset.execute(method, timesteps=hours*substeps*3600/dt, dt=dt,
+                     output_file=pset.ParticleFile(name="StommelParticle" + method.__name__),
+                     output_steps=substeps)
+
+    toc = time.clock()
     if verbose:
         print("Final particle positions:\n%s" % pset)
+        print("Execution time: %f s" % (toc-tic))
 
     return pset
 
@@ -103,7 +124,7 @@ Example of particle advection around an idealised peninsula""")
                    help='Print profiling information after run')
     p.add_argument('-g', '--grid', type=int, nargs=2, default=None,
                    help='Generate grid file with given dimensions')
-    p.add_argument('-m', '--method', choices=('RK4', 'EE'), default='RK4',
+    p.add_argument('-m', '--method', choices=('RK4', 'EE', 'RK45'), default='RK4',
                    help='Numerical method used for advection')
     args = p.parse_args()
     filename = 'analytical_eddies'
