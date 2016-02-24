@@ -69,15 +69,21 @@ def AdvectionRK45(particle, grid, tol):
                       A[3][0] + v2 * A[3][1] + v3 * A[3][2] + v4 * A[3][3]) * f_lat)
         u5, v5 = (grid.U[time + c[3] * dt, lon4, lat4],\
                   grid.V[time + c[3] * dt, lon4, lat4])
+        lon5, lat5 = (particle.lon + (u1 * A[4][0] + u2 * A[4][1] + u3 *\
+                      A[4][2] + u4 * A[4][3] + u5 * A[4][4]) * f_lon,\
+                      particle.lat + (v1 * A[4][0] + v2 * A[4][1] + v3 *\
+                      A[4][2] + v4 * A[4][3] + v5 * A[4][4]) * f_lat)
+        u6, v6 = (grid.U[time + c[4] * dt, lon5, lat5],\
+                  grid.V[time + c[4] * dt, lon5, lat5])
 
         lon_4th = particle.lon + (u1 * b4[0] + u2 * b4[1] + u3 * b4[2] + u4 *\
-                  b4[3]) * f_lon
+                  b4[3] + u5 * b4[4]) * f_lon
         lat_4th = particle.lat + (v1 * b4[0] + v2 * b4[1] + v3 * b4[2] + v4 *\
-                  b4[3]) * f_lat
+                  b4[3] + v5 * b4[4]) * f_lat
         lon_5th = particle.lon + (u1 * b5[0] + u2 * b5[1] + u3 * b5[2] + u4 *\
-                  b5[3] + u5 * b5[4]) * f_lon
+                  b5[3] + u5 * b5[4] + u6 * b5[5]) * f_lon
         lat_5th = particle.lat + (v1 * b5[0] + v2 * b5[1] + v3 * b5[2] + v4 *\
-                  b5[3] + v5 * b5[4]) * f_lat
+                  b5[3] + v5 * b5[4] + v6 * b5[5]) * f_lat
 
         kappa = math.sqrt((lon_5th - lon_4th) ** 2 + (lat_5th - lat_4th) ** 2)
         if kappa <= dt*tol:
@@ -86,6 +92,8 @@ def AdvectionRK45(particle, grid, tol):
             particle.time += dt
             if kappa <= dt*tol/10:
                 particle.dt *= 2
+            else:
+                particle.dt = dt
             break
         dt /= 2
 
