@@ -103,13 +103,13 @@ class Field(object):
     :param transpose: Transpose data to required (lon, lat) layout
     """
 
-    def __init__(self, name, data, lon, lat, depth=None, time=None,
+    def __init__(self, name, data, lon, lat, depth, time=None,
                  transpose=False, vmin=None, vmax=None, time_origin=0, units=None):
         self.name = name
         self.data = data
         self.lon = lon
         self.lat = lat
-        self.depth = np.zeros(1, dtype=np.float32) if depth is None else depth
+        self.depth = depth
         self.time = np.zeros(1, dtype=np.float64) if time is None else time
         self.time_origin = time_origin
         self.units = units if units is not None else UnitConverter()
@@ -128,7 +128,11 @@ class Field(object):
             # Make a copy of the transposed array to enforce
             # C-contiguous memory layout for JIT mode.
             self.data = np.transpose(self.data).copy()
-        self.data = self.data.reshape((self.time.size, self.lat.size, self.lon.size))
+        if self.depth.size > 1:
+            self.data = self.data.reshape((self.time.size, self.depth.size,
+                                           self.lat.size, self.lon.size))
+        else:
+            self.data = self.data.reshape((self.time.size, self.lat.size, self.lon.size))
 
         # Hack around the fact that NaN and ridiculously large values
         # propagate in SciPy's interpolators
@@ -164,8 +168,8 @@ class Field(object):
             # Assign time_units if the time dimension has units and calendar
             time_units = filebuffer.time_units
             calendar = filebuffer.calendar
-        # Default depth to zeros until we implement 3D grids properly
-        depth = np.zeros(1, dtype=np.float32)
+            # Default depth to zeros until we implement 3D grids properly
+            depth = filebuffer.dep
         # Concatenate time variable to determine overall dimension
         # across multiple files
         timeslices = []
@@ -180,11 +184,15 @@ class Field(object):
             time_origin = num2date(0, time_units, calendar)
 
         # Pre-allocate grid data before reading files into buffer
-        data = np.empty((time.size, 1, lat.size, lon.size), dtype=np.float32)
+        data = np.empty((time.size, depth.size, lat.size, lon.size), dtype=np.float32)
         tidx = 0
         for tslice, fname in zip(timeslices, filenames):
             with FileBuffer(fname, dimensions) as filebuffer:
-                data[tidx:, 0, :, :] = filebuffer.data[:, :, :]
+                tmp = filebuffer.data
+                if len(tmp.shape) is 3:
+                    data[tidx:, 0, :, :] = filebuffer.data[:, :, :]
+                else:
+                    data[tidx:, :, :, :] = filebuffer.data[:, :, :, :]
             tidx += tslice.size
         return cls(name, data, lon, lat, depth=depth, time=time,
                    time_origin=time_origin, **kwargs)
@@ -316,7 +324,7 @@ class Field(object):
         if varname is None:
             varname = self.name
         # Derive name of 'depth' variable for NEMO convention
-        vname_depth = 'depth%s' % self.name.lower()
+        vname_depth = 'depth'
 
         # Create DataArray objects for file I/O
         t, d, x, y = (self.time.size, self.depth.size,
@@ -361,11 +369,19 @@ class FileBuffer(object):
         return lat[:, 0] if len(lat.shape) > 1 else lat[:]
 
     @property
+    def dep(self):
+        if 'depth' in self.dimensions:
+            dep = self.dataset[self.dimensions['depth']]
+        else:
+            dep = np.zeros(1, dtype=np.float32)
+        return dep[:, 0] if len(dep.shape) > 1 else dep[:]
+
+    @property
     def data(self):
         if len(self.dataset[self.dimensions['data']].shape) == 3:
             return self.dataset[self.dimensions['data']][:, :, :]
         else:
-            return self.dataset[self.dimensions['data']][:, 0, :, :]
+            return self.dataset[self.dimensions['data']][:, :, :, :]
 
     @property
     def time(self):
