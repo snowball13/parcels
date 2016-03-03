@@ -20,7 +20,7 @@ def particleplotting(filename,tracerfile, mode):
       tfile = Dataset(tracerfile,'r')
       X = tfile.variables['x']
       Y = tfile.variables['y']
-      P = tfile.variables['P']
+      P = tfile.variables['vozocrtx']
       plt.contourf(np.squeeze(X),np.squeeze(Y),np.squeeze(P))
 
     if mode == '3d':
@@ -33,7 +33,7 @@ def particleplotting(filename,tracerfile, mode):
     elif mode == '2d':
       plt.plot(np.transpose(lon),np.transpose(lat),'.-')
       plt.xlabel('Longitude')
-      plt.ylabel('Latitude')    
+      plt.ylabel('Latitude')
     elif mode =='movie2d':
 
       line, = ax.plot(lon[:,0], lat[:,0],'ow')

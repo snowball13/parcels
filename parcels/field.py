@@ -90,8 +90,7 @@ class Field(object):
 
     @cachedmethod(operator.attrgetter('interpolator_cache'))
     def interpolator(self, t_idx):
-        return RectBivariateSpline(self.lat, self.lon,
-                                   self.data[t_idx, :])
+        return RectBivariateSpline(self.lat, self.lon, self.data[t_idx, :])
 
     @cachedmethod(operator.attrgetter('time_index_cache'))
     def time_index(self, time):
@@ -122,7 +121,7 @@ class Field(object):
 
     @property
     def ctypes_struct(self):
-        """Returns a ctypes struct object containing all relevnt
+        """Returns a ctypes struct object containing all relevant
         pointers and sizes for this field."""
 
         # Ctypes struct corresponding to the type definition in parcels.h
