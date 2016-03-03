@@ -1,11 +1,23 @@
 from parcels import NEMOGrid, Particle, JITParticle, TimeParticle,\
                     AdvectionRK4, AdvectionEE, AdvectionRK45
 from argparse import ArgumentParser
+from netCDF4 import Dataset
 import numpy as np
 import math
 import pytest
 import matplotlib.pyplot as plt
 import time
+
+
+def ground_truth(lon,lat):
+    day = 11.6
+    r = 1 / (day * 86400)
+    beta = 2e-11
+    a = 2000000
+    e_s = r / (beta * a)
+    psi = (1 - np.exp(-lon * math.pi / 180 / e_s) - lon *\
+        math.pi / 180) * math.pi * np.sin(math.pi ** 2 * lat / 180)
+    return psi
 
 
 def analytical_eddies_grid(xdim=200, ydim=200):
@@ -110,6 +122,72 @@ def stommel_eddies_example(grid, npart=1, mode='jit', verbose=False,
     return pset
 
 
+def stommel_error_test():
+    npart = 1
+    ntest = 7
+    filename = 'stommel'
+    grid = analytical_eddies_grid(1000, 1000)
+    grid.write(filename)
+
+    t = 27.635*24.*3600-330.
+    timesteps = 100
+    dt = t/timesteps    #To make sure it ends exactly on the end time
+    steps = np.empty(ntest)
+    errRK45 = np.empty(ntest)
+    errRK4 = np.empty(ntest)
+    errposRK45 = np.empty(ntest)
+    errposRK4 = np.empty(ntest)
+    gt = ground_truth(10., 50.)
+    gt_pos = (10.001620, 49.999745)
+    tol = np.logspace(-14,-8,ntest)
+
+    for i in range(len(tol)):
+        psetRK45 = grid.ParticleSet(size=npart, pclass=TimeParticle,
+                                    start=(10., 50.), finish=(7., 30.))
+        for particle in psetRK45:
+            particle.time = 0.
+            particle.dt = dt
+        filename = psetRK45.ParticleFile(name="StommelRK45_" + str(i))
+        psetRK45.execute(AdvectionRK45, timesteps=timesteps, dt=dt,
+                         output_file=filename,
+                         output_steps=1, tol=tol[i], flat=True)
+        pfile=Dataset("StommelRK45_"+str(i)+".nc",'r')
+        lon = pfile.variables['lon'][:,:]
+        lat = pfile.variables['lat'][:,:]
+        steps[i] = np.shape(lon)[1]
+        errRK45[i] = abs(ground_truth(lon[0,-1], lat[0,-1]) - gt)
+        errposRK45[i] = np.sqrt((gt_pos[0] - lon[0,-1]) ** 2 + (gt_pos[1] - lat[0,-1]) ** 2)
+
+    dtRK4 = t/steps
+    for i in range(len(dtRK4)):
+        psetRK4 = grid.ParticleSet(size=npart, pclass=Particle,
+                                   start=(10., 50.), finish=(7., 30.))
+        psetRK4.execute(AdvectionRK4, timesteps=steps[i], dt=dtRK4[i],
+                         output_file=psetRK4.ParticleFile(name="StommelRK4_" + str(i)),
+                         output_steps=1, flat=True)
+        pfile=Dataset("StommelRK4_"+str(i)+".nc",'r')
+        lon = pfile.variables['lon'][:,:]
+        lat = pfile.variables['lat'][:,:]
+        errRK4[i] = abs(ground_truth(lon[0,-1], lat[0,-1]) - gt)
+        errposRK4[i] = np.sqrt((gt_pos[0] - lon[0,-1]) ** 2 + (gt_pos[1] - lat[0,-1]) ** 2)
+
+    #Set up plotting
+    fig = plt.figure()
+    plt.yscale('log')
+    plt.plot(steps, np.transpose(errRK45), '.-', label='RK45')
+    plt.plot(steps, np.transpose(errRK4), '.-', label='RK4')
+    plt.title('Psi error')
+    plt.xlabel('# steps')
+    plt.legend(loc=1)
+
+    fig = plt.figure()
+    plt.yscale('log')
+    plt.plot(steps, np.transpose(errposRK45), '.-', label='RK45')
+    plt.plot(steps, np.transpose(errposRK4), '.-', label='RK4')
+    plt.title('Distance error')
+    plt.legend(loc=1)
+    plt.show()
+
 @pytest.mark.parametrize('mode', ['scipy', 'jit'])
 def test_analytic_eddies_grid(mode):
     grid = analytical_eddies_grid()
@@ -156,3 +234,4 @@ Example of particle advection around an idealised peninsula""")
     else:
         stommel_eddies_example(grid, args.particles, mode=args.mode,
                               verbose=args.verbose, method=method)
+#    stommel_error_test()
