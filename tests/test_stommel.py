@@ -35,8 +35,8 @@ def analytical_eddies_grid(xdim=200, ydim=200):
     # Some constants
     day = 11.6
     r = 1 / (day * 86400)
-    beta = 4e-9
-    a = 10000
+    beta = 2e-11
+    a = 2000000
     e_s = r / (beta * a)
 
     [x, y] = np.mgrid[:lon.size, :lat.size]
@@ -53,7 +53,7 @@ def analytical_eddies_grid(xdim=200, ydim=200):
                               depth, time, field_data={'P': P})
 
 
-def analytical_eddies_example(grid, npart=1, mode='jit', verbose=False,
+def stommel_eddies_example(grid, npart=1, mode='jit', verbose=False,
                           method=AdvectionRK4):
     """Configuration of a particle set that follows two moving eddies
 
@@ -61,8 +61,14 @@ def analytical_eddies_example(grid, npart=1, mode='jit', verbose=False,
     :arg npart: Number of particles to intialise"""
 
     # Determine particle class according to mode
-    ParticleClass = JITParticle if mode == 'jit' else Particle
-    if method == AdvectionRK45: ParticleClass = TimeParticle
+    if mode == 'jit':
+        if method == AdvectionRK45:
+            raise TypeError('AdvectionRK45 cannot be used in JIT mode')
+        ParticleClass = JITParticle
+    elif method == AdvectionRK45:
+        ParticleClass = TimeParticle
+    else:
+        ParticleClass = Particle
 
     pset = grid.ParticleSet(size=npart, pclass=ParticleClass,
                             start=(10., 50.), finish=(7., 30.))
@@ -72,9 +78,10 @@ def analytical_eddies_example(grid, npart=1, mode='jit', verbose=False,
         print("Initial particle positions:\n%s" % pset)
 
     # Execute for 25 days, with 5min timesteps and hourly output
-    hours = 100*24.
-    substeps = 1
-    dt = 2400
+    hours = 27.635*24.*3600.-330.
+    substeps = 1.
+    timesteps = 1000.
+    dt = hours/timesteps    #To make sure it ends exactly on the end time
 
     tic = time.clock()
 
@@ -82,18 +89,18 @@ def analytical_eddies_example(grid, npart=1, mode='jit', verbose=False,
         for particle in pset:
             particle.time = 0.
             particle.dt = dt
-        tol = 1e-6 #3e-5
-        print("MovingEddies: Advecting %d particles with adaptive step size"
+        tol = 1e-13 #3e-5
+        print("Stommel: Advecting %d particles with adaptive step size"
               % (npart))
-        pset.execute(method, timesteps=hours*substeps*3600/dt, dt=dt,
+        pset.execute(method, timesteps=timesteps, dt=dt,
                      output_file=pset.ParticleFile(name="StommelParticle" + method.__name__),
-                     output_steps=substeps, tol=tol)
+                     output_steps=substeps, tol=tol, flat=True)
     else:
-        print("MovingEddies: Advecting %d particles for %d timesteps"
-              % (npart, hours * substeps * 3600 / dt))
-        pset.execute(method, timesteps=hours*substeps*3600/dt, dt=dt,
+        print("Stommel: Advecting %d particles for %d timesteps"
+              % (npart, hours*substeps/dt))
+        pset.execute(method, timesteps=timesteps, dt=dt,
                      output_file=pset.ParticleFile(name="StommelParticle" + method.__name__),
-                     output_steps=substeps)
+                     output_steps=substeps, flat=True)
 
     toc = time.clock()
     if verbose:
@@ -142,10 +149,10 @@ Example of particle advection around an idealised peninsula""")
     if args.profiling:
         from cProfile import runctx
         from pstats import Stats
-        runctx("analytical_eddies_example(grid, args.particles, mode=args.mode, \
+        runctx("stommel_eddies_example(grid, args.particles, mode=args.mode, \
                               verbose=args.verbose)",
                globals(), locals(), "Profile.prof")
         Stats("Profile.prof").strip_dirs().sort_stats("time").print_stats(10)
     else:
-        analytical_eddies_example(grid, args.particles, mode=args.mode,
+        stommel_eddies_example(grid, args.particles, mode=args.mode,
                               verbose=args.verbose, method=method)

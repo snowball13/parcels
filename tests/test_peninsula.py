@@ -77,8 +77,14 @@ def pensinsula_example(grid, npart, mode='jit', degree=1,
     :arg npart: Number of particles to intialise"""
 
     # Determine particle class according to mode
-    ParticleClass = JITParticle if mode == 'jit' else Particle
-    if method == AdvectionRK45: ParticleClass = TimeParticle
+    if mode == 'jit':
+        if method == AdvectionRK45:
+            raise TypeError('AdvectionRK45 cannot be used in JIT mode')
+        ParticleClass = JITParticle
+    elif method == AdvectionRK45:
+        ParticleClass = TimeParticle
+    else:
+        ParticleClass = Particle
 
     # First, we define a custom Particle class to which we add a
     # custom variable, the initial stream function value p
@@ -121,7 +127,7 @@ def pensinsula_example(grid, npart, mode='jit', degree=1,
         for particle in pset:
             particle.time = 0.
             particle.dt = dt
-        tol = 1e-5
+        tol = 1e-10
         print("Peninsula: Advecting %d particles with adaptive timesteps"
               % (npart))
         pset.execute(k_adv + k_p, timesteps=int(time / dt), dt=dt,

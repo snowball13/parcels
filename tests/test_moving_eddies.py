@@ -72,8 +72,14 @@ def moving_eddies_example(grid, npart=2, mode='jit', verbose=False,
     :arg npart: Number of particles to intialise"""
 
     # Determine particle class according to mode
-    ParticleClass = JITParticle if mode == 'jit' else Particle
-    if method == AdvectionRK45: ParticleClass = TimeParticle
+    if mode == 'jit':
+        if method == AdvectionRK45:
+            raise TypeError('AdvectionRK45 cannot be used in JIT mode')
+        ParticleClass = JITParticle
+    elif method == AdvectionRK45:
+        ParticleClass = TimeParticle
+    else:
+        ParticleClass = Particle
 
     pset = grid.ParticleSet(size=npart, pclass=ParticleClass,
                             start=(3.3, 46.), finish=(3.3, 47.8))
@@ -83,14 +89,14 @@ def moving_eddies_example(grid, npart=2, mode='jit', verbose=False,
 
     # Execute for 25 days, with 5min timesteps and hourly output
     hours = 16.*86400.
-    substeps = 1.
-    dt = 28800.
+    substeps = 1.   #Output every substeps dt
+    dt = 7200.     #Timestep size
 
     if method == AdvectionRK45:
         for particle in pset:
             particle.time = 0.
             particle.dt = dt
-        tol = 1e-5
+        tol = 1e-11
         print("MovingEddies: Advecting %d particles with adaptive timesteps"
               % (npart))
         pset.execute(method, timesteps=int(hours/dt), dt=dt,
