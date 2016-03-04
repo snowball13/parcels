@@ -113,7 +113,7 @@ def stommel_eddies_example(grid, npart=1, mode='jit', verbose=False,
 @pytest.mark.parametrize('mode', ['scipy', 'jit'])
 def test_analytic_eddies_grid(mode):
     grid = analytical_eddies_grid()
-    pset = analytical_eddies_example(grid, 1, mode=mode)
+    pset = stommel_eddies_example(grid, 1, mode=mode)
     assert(pset[0].lon < 0.5 and 45.8 < pset[0].lat < 46.15)
     assert(pset[1].lon < 0.5 and 50.4 < pset[1].lat < 50.7)
 
