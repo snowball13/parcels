@@ -73,15 +73,7 @@ def moving_eddies_example(grid, npart=2, mode='jit', verbose=False,
     :arg npart: Number of particles to intialise"""
 
     # Determine particle class according to mode
-    if mode == 'jit':
-        if method == AdvectionRK45:
-            raise TypeError('AdvectionRK45 cannot be used in JIT mode')
-        ParticleClass = JITParticle
-    elif method == AdvectionRK45:
-        ParticleClass = TimeParticle
-    else:
-        ParticleClass = Particle
-
+    ParticleClass = JITParticle if mode == 'jit' else Particle
     pset = grid.ParticleSet(size=npart, pclass=ParticleClass,
                             start=(3.3, 46.), finish=(3.3, 47.8))
 

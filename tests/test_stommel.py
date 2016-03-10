@@ -4,7 +4,6 @@ from argparse import ArgumentParser
 import numpy as np
 import math
 import pytest
-import matplotlib.pyplot as plt
 import time
 
 
@@ -75,18 +74,9 @@ def stommel_eddies_example(grid, npart=1, mode='jit', verbose=False,
     :arg npart: Number of particles to intialise"""
 
     # Determine particle class according to mode
-    if mode == 'jit':
-        if method == AdvectionRK45:
-            raise TypeError('AdvectionRK45 cannot be used in JIT mode')
-        ParticleClass = JITParticle
-    elif method == AdvectionRK45:
-        ParticleClass = TimeParticle
-    else:
-        ParticleClass = Particle
-
+    ParticleClass = JITParticle if mode == 'jit' else Particle
     pset = grid.ParticleSet(size=npart, pclass=ParticleClass,
                             start=(10., 50.), finish=(7., 30.))
-#                            start=(7., 30.), finish=(10., 50.))
 
     if verbose:
         print("Initial particle positions:\n%s" % pset)
@@ -108,13 +98,13 @@ def stommel_eddies_example(grid, npart=1, mode='jit', verbose=False,
               % (npart))
         pset.execute(method, timesteps=timesteps, dt=dt,
                      output_file=pset.ParticleFile(name="StommelParticle" + method.__name__),
-                     output_steps=substeps, tol=tol, flat=True)
+                     output_steps=substeps, tol=tol)
     else:
         print("Stommel: Advecting %d particles for %d timesteps"
               % (npart, hours*substeps/dt))
         pset.execute(method, timesteps=timesteps, dt=dt,
                      output_file=pset.ParticleFile(name="StommelParticle" + method.__name__),
-                     output_steps=substeps, flat=True)
+                     output_steps=substeps)
 
     toc = time.clock()
     if verbose:
@@ -168,4 +158,3 @@ Example of particle advection around an idealised peninsula""")
     else:
         stommel_eddies_example(grid, args.particles, mode=args.mode,
                               verbose=args.verbose, method=method[args.method])
-#    stommel_error_test()
