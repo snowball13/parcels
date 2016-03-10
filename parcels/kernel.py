@@ -48,9 +48,10 @@ class Kernel(object):
                                               self.funcvars)
             self.field_args = kernelgen.field_args
             loopgen = LoopGenerator(grid, ptype)
-            self.ccode = loopgen.generate(self.funcname,
-                                          self.field_args,
-                                          kernel_ccode)
+            adaptive = True if funcname == 'AdvectionRK45' or funcname ==\
+                                'AdvectionRK45UpdateP' else False
+            self.ccode = loopgen.generate(self.funcname, self.field_args,
+                                          kernel_ccode, adaptive=adaptive)
 
     def compile(self, compiler):
         """ Writes kernel code to file and compiles it."""

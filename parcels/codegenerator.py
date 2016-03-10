@@ -270,7 +270,7 @@ class LoopGenerator(object):
         self.grid = grid
         self.ptype = ptype
 
-    def generate(self, funcname, field_args, kernel_ast):
+    def generate(self, funcname, field_args, kernel_ast, adaptive=False):
         ccode = []
 
         # Add include for Parcels and math header
@@ -294,9 +294,13 @@ class LoopGenerator(object):
         fargs_str = ", ".join(['time', 'dt'] + list(field_args.keys()))
         loop_body = [c.Statement("%s(&(particles[p]), %s)" %
                                  (funcname, fargs_str))]
-        ploop = c.For("p = 0", "p < num_particles", "++p", c.Block(loop_body))
-        tloop = c.For("t = 0", "t < timesteps", "++t",
-                      c.Block([ploop, c.Statement("time += (double)dt")]))
+        if adaptive:
+            tloop = c.While("particles[p].time < output_time", c.Block(loop_body))
+            ploop = c.For("p = 0", "p < num_particles", "++p", c.Block([tloop]))
+        else:
+            ploop = c.For("p = 0", "p < num_particles", "++p", c.Block(loop_body))
+            tloop = c.For("t = 0", "t < timesteps", "++t",
+                          c.Block([ploop, c.Statement("time += (double)dt")]))
         fbody = c.Block([c.Value("int", "p, t"), tloop])
         fdecl = c.FunctionDeclaration(c.Value("void", "particle_loop"), args)
         ccode += [str(c.FunctionBody(fdecl, fbody))]
