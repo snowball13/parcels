@@ -1,4 +1,4 @@
-from parcels import NEMOGrid, Particle, JITParticle, TimeParticle,\
+from parcels import NEMOGrid, Particle, JITParticle,\
                     AdvectionRK4, AdvectionEE, AdvectionRK45
 from argparse import ArgumentParser
 from netCDF4 import Dataset
@@ -73,15 +73,7 @@ def stommel_eddies_example(grid, npart=1, mode='jit', verbose=False,
     :arg npart: Number of particles to intialise"""
 
     # Determine particle class according to mode
-    if mode == 'jit':
-        if method == AdvectionRK45:
-            raise TypeError('AdvectionRK45 cannot be used in JIT mode')
-        ParticleClass = JITParticle
-    elif method == AdvectionRK45:
-        ParticleClass = TimeParticle
-    else:
-        ParticleClass = Particle
-
+    ParticleClass = JITParticle if mode == 'jit' else Particle
     pset = grid.ParticleSet(size=npart, pclass=ParticleClass,
                             start=(10., 50.), finish=(7., 30.))
 #                            start=(7., 30.), finish=(10., 50.))
@@ -91,8 +83,8 @@ def stommel_eddies_example(grid, npart=1, mode='jit', verbose=False,
 
     # Execute for 25 days, with 5min timesteps and hourly output
     hours = 27.635*24.*3600.-330.
-    substeps = 1.
-    timesteps = 1000.
+    substeps = 1
+    timesteps = 100.
     dt = hours/timesteps    #To make sure it ends exactly on the end time
 
     tic = time.clock()
@@ -106,13 +98,13 @@ def stommel_eddies_example(grid, npart=1, mode='jit', verbose=False,
               % (npart))
         pset.execute(method, timesteps=timesteps, dt=dt,
                      output_file=pset.ParticleFile(name="StommelParticle" + method.__name__),
-                     output_steps=substeps, tol=tol, flat=True)
+                     output_steps=substeps, tol=tol)
     else:
         print("Stommel: Advecting %d particles for %d timesteps"
               % (npart, hours*substeps/dt))
         pset.execute(method, timesteps=timesteps, dt=dt,
                      output_file=pset.ParticleFile(name="StommelParticle" + method.__name__),
-                     output_steps=substeps, flat=True)
+                     output_steps=substeps)
 
     toc = time.clock()
     if verbose:

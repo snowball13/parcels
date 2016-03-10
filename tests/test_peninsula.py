@@ -1,4 +1,4 @@
-from parcels import NEMOGrid, Particle, JITParticle, TimeParticle,\
+from parcels import NEMOGrid, Particle, JITParticle,\
                     AdvectionRK4, AdvectionEE, AdvectionRK45
 from argparse import ArgumentParser
 import numpy as np
@@ -77,14 +77,7 @@ def pensinsula_example(grid, npart, mode='jit', degree=1,
     :arg npart: Number of particles to intialise"""
 
     # Determine particle class according to mode
-    if mode == 'jit':
-        if method == AdvectionRK45:
-            raise TypeError('AdvectionRK45 cannot be used in JIT mode')
-        ParticleClass = JITParticle
-    elif method == AdvectionRK45:
-        ParticleClass = TimeParticle
-    else:
-        ParticleClass = Particle
+    ParticleClass = JITParticle if mode == 'jit' else Particle
 
     # First, we define a custom Particle class to which we add a
     # custom variable, the initial stream function value p
