@@ -134,7 +134,7 @@ def stommel_error_test():
     tol = np.logspace(-14,-8,ntest)
 
     for i in range(len(tol)):
-        psetRK45 = grid.ParticleSet(size=npart, pclass=TimeParticle,
+        psetRK45 = grid.ParticleSet(size=npart, pclass=Particle,
                                     start=(10., 50.), finish=(7., 30.))
         for particle in psetRK45:
             particle.time = 0.
@@ -142,7 +142,7 @@ def stommel_error_test():
         filename = psetRK45.ParticleFile(name="StommelRK45_" + str(i))
         psetRK45.execute(AdvectionRK45, timesteps=timesteps, dt=dt,
                          output_file=filename,
-                         output_steps=1, tol=tol[i], flat=True)
+                         output_steps=1, tol=tol[i])
         pfile=Dataset("StommelRK45_"+str(i)+".nc",'r')
         lon = pfile.variables['lon'][:,:]
         lat = pfile.variables['lat'][:,:]
@@ -156,7 +156,7 @@ def stommel_error_test():
                                    start=(10., 50.), finish=(7., 30.))
         psetRK4.execute(AdvectionRK4, timesteps=steps[i], dt=dtRK4[i],
                          output_file=psetRK4.ParticleFile(name="StommelRK4_" + str(i)),
-                         output_steps=1, flat=True)
+                         output_steps=1)
         pfile=Dataset("StommelRK4_"+str(i)+".nc",'r')
         lon = pfile.variables['lon'][:,:]
         lat = pfile.variables['lat'][:,:]
@@ -227,3 +227,4 @@ Example of particle advection around an idealised peninsula""")
         stommel_eddies_example(grid, args.particles, mode=args.mode,
                               verbose=args.verbose, method=method)
 #    stommel_error_test()
+                              
