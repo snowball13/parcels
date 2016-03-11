@@ -1,4 +1,4 @@
-from parcels import NEMOGrid, Particle, JITParticle, TimeParticle,\
+from parcels import Grid, Particle, JITParticle,\
                     AdvectionRK4, AdvectionEE, AdvectionRK45
 from argparse import ArgumentParser
 import numpy as np
@@ -6,6 +6,20 @@ import math
 import pytest
 import matplotlib.pyplot as plt
 import time
+
+
+method = {'RK4': AdvectionRK4, 'EE': AdvectionEE, 'RK45': AdvectionRK45}
+
+
+def ground_truth(lon,lat):
+    day = 11.6
+    r = 1 / (day * 86400)
+    beta = 2e-11
+    a = 2000000
+    e_s = r / (beta * a)
+    psi = (1 - np.exp(-lon * math.pi / 180 / e_s) - lon *\
+        math.pi / 180) * math.pi * np.sin(math.pi ** 2 * lat / 180)
+    return psi
 
 
 def analytical_eddies_grid(xdim=200, ydim=200):
@@ -49,7 +63,7 @@ def analytical_eddies_grid(xdim=200, ydim=200):
                 V[i, j, t] = (math.exp(-lon[i] * math.pi / 180 / e_s) / e_s -\
                             1) * math.pi * math.sin(math.pi ** 2 * lat[j] / 180)
 
-    return NEMOGrid.from_data(U, lon, lat, V, lon, lat,
+    return Grid.from_data(U, lon, lat, V, lon, lat,
                               depth, time, field_data={'P': P})
 
 
@@ -79,8 +93,8 @@ def stommel_eddies_example(grid, npart=1, mode='jit', verbose=False,
 
     # Execute for 25 days, with 5min timesteps and hourly output
     hours = 27.635*24.*3600.-330.
-    substeps = 1.
-    timesteps = 1000.
+    substeps = 1
+    timesteps = 20.
     dt = hours/timesteps    #To make sure it ends exactly on the end time
 
     tic = time.clock()
@@ -136,15 +150,13 @@ Example of particle advection around an idealised peninsula""")
     args = p.parse_args()
     filename = 'analytical_eddies'
 
-    method = locals()['Advection' + args.method]
-
     # Generate grid files according to given dimensions
     if args.grid is not None:
         grid = analytical_eddies_grid(args.grid[0], args.grid[1])
         grid.write(filename)
 
     # Open grid files
-    grid = NEMOGrid.from_file(filename)
+    grid = Grid.from_nemo(filename)
 
     if args.profiling:
         from cProfile import runctx
@@ -155,4 +167,5 @@ Example of particle advection around an idealised peninsula""")
         Stats("Profile.prof").strip_dirs().sort_stats("time").print_stats(10)
     else:
         stommel_eddies_example(grid, args.particles, mode=args.mode,
-                              verbose=args.verbose, method=method)
+                              verbose=args.verbose, method=method[args.method])
+#    stommel_error_test()
