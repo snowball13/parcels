@@ -58,7 +58,7 @@ class Kernel(object):
                                               self.funcvars)
             self.field_args = kernelgen.field_args
             loopgen = LoopGenerator(grid, ptype)
-            adaptive = True if funcname == 'AdvectionRK45' or funcname ==\
+            adaptive = True if self.funcname == 'AdvectionRK45' or self.funcname ==\
                                 'AdvectionRK45UpdateP' else False
             self.ccode = loopgen.generate(self.funcname, self.field_args,
                                           kernel_ccode, adaptive=adaptive)
@@ -90,7 +90,7 @@ class Kernel(object):
             if output_time == None:
                 self.pyfunc(p, pset.grid, end_time, tol)
                 return
-            while p.time < output_time:
+            while math.ceil(p.time) < math.floor(output_time):
                 self.pyfunc(p, pset.grid, output_time, tol)
 
     def merge(self, kernel):
