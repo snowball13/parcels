@@ -198,8 +198,6 @@ Example of particle advection around an idealised peninsula""")
                    help='Numerical method used for advection')
     args = p.parse_args()
 
-    method = locals()['Advection' + args.method]
-
     if args.grid is not None:
         filename = 'peninsula'
         grid = peninsula_grid(args.grid[0], args.grid[1])
