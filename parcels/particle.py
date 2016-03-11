@@ -90,7 +90,8 @@ def AdvectionRK45(particle, grid, output_time, tol):
         lat_5th = particle.lat + (v1 * b5[0] + v2 * b5[1] + v3 * b5[2] + v4 *\
                   b5[3] + v5 * b5[4] + v6 * b5[5]) * f_lat
 
-        kappa = math.sqrt((lon_5th - lon_4th) ** 2 + (lat_5th - lat_4th) ** 2)
+        kappa = math.sqrt((lon_5th - lon_4th) * (lon_5th - lon_4th) +\
+                          (lat_5th - lat_4th) * (lat_5th - lat_4th))
         if kappa <= dt*tol:
             particle.lon = lon_4th
             particle.lat = lat_4th
