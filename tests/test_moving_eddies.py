@@ -84,7 +84,7 @@ def moving_eddies_example(grid, npart=2, mode='jit', verbose=False,
 
     # Execute for 25 days, with 5min timesteps and hourly output
     hours = 16.*86400.
-    substeps = 1.   #Output every substeps dt
+    substeps = 1   #Output every substeps dt
     dt = 7200.     #Timestep size
 
     if method == AdvectionRK45:
