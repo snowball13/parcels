@@ -41,8 +41,8 @@ class Kernel(object):
                 del stack  # Remove cyclic references
             # Compile and generate Python function from AST
             py_mod = Module(body=[self.py_ast])
-            exec(compile(py_mod, "<ast>", "exec"), globals())
-            self.pyfunc = globals()[self.funcname]
+            exec(compile(py_mod, "<ast>", "exec"), user_ctx)
+            self.pyfunc = user_ctx[self.funcname]
 
         self.name = "%s%s" % (ptype.name, funcname)
 

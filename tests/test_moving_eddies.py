@@ -63,15 +63,15 @@ def moving_eddies_grid(xdim=200, ydim=350):
         U[:, :-1, t] = np.diff(P[:, :, t], axis=1) / dy / corio_0 * g
         V[:, -1, t] = U[:, -2, t]  # Fill in the last row
 
-    return NEMOGrid.from_data(U, lon, lat, V, lon, lat,
-                              depth, time, field_data={'P': P})
+    return Grid.from_data(U, lon, lat, V, lon, lat,
+                          depth, time, field_data={'P': P})
 
 
 def moving_eddies_example(grid, npart=2, mode='jit', verbose=False,
                           method=AdvectionRK4):
     """Configuration of a particle set that follows two moving eddies
 
-    :arg grid: :class NEMOGrid: that defines the flow field
+    :arg grid: :class Grid: that defines the flow field
     :arg npart: Number of particles to intialise"""
 
     # Determine particle class according to mode
@@ -142,7 +142,7 @@ Example of particle advection around an idealised peninsula""")
         grid.write(filename)
 
     # Open grid files
-    grid = NEMOGrid.from_file(filename)
+    grid = Grid.from_nemo(filename)
 
     if args.profiling:
         from cProfile import runctx
