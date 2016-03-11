@@ -1,11 +1,13 @@
-from parcels import NEMOGrid, Particle, JITParticle,\
+from parcels import Grid, Particle, JITParticle,\
                     AdvectionRK4, AdvectionEE, AdvectionRK45
 from argparse import ArgumentParser
 import numpy as np
 import math
 import pytest
-#from netCDF4 import Dataset
-#import matplotlib.pyplot as plt
+
+
+method = {'RK4': AdvectionRK4, 'EE': AdvectionEE, 'RK45': AdvectionRK45}
+
 
 def ground_truth(x_0, y_0, time, dt, pset, output_file):
     f = 0.0001  #Coriolis frequency
@@ -80,7 +82,7 @@ def analytical_eddies_grid(xdim=20, ydim=20):
                         np.exp(-gamma * time[t]) * math.cos(f * time[t])
             V[:, :, t] = -(u_0 - u_g) * np.exp(-gamma * time[t]) * math.sin(f * time[t])
 
-    return NEMOGrid.from_data(U, lon, lat, V, lon, lat,
+    return Grid.from_data(U, lon, lat, V, lon, lat,
                               depth, time, field_data={'P': P})
 
 
@@ -160,15 +162,13 @@ Example of particle advection around an idealised peninsula""")
     args = p.parse_args()
     filename = 'analytical_eddies'
 
-    method = locals()['Advection' + args.method]
-
     # Generate grid files according to given dimensions
     if args.grid is not None:
         grid = analytical_eddies_grid(args.grid[0], args.grid[1])
         grid.write(filename)
 
     # Open grid files
-    grid = NEMOGrid.from_file(filename)
+    grid = Grid.from_nemo(filename)
 
     if args.profiling:
         from cProfile import runctx
@@ -179,4 +179,4 @@ Example of particle advection around an idealised peninsula""")
         Stats("Profile.prof").strip_dirs().sort_stats("time").print_stats(10)
     else:
         analytical_eddies_example(grid, args.particles, mode=args.mode,
-                              verbose=args.verbose, method=method)
+                              verbose=args.verbose, method=method[args.method])
