@@ -1,5 +1,5 @@
 from parcels import Grid, Particle, JITParticle,\
-                    AdvectionRK4, AdvectionEE, AdvectionRK45
+    AdvectionRK4, AdvectionEE, AdvectionRK45
 from argparse import ArgumentParser
 import numpy as np
 import math
@@ -10,14 +10,14 @@ import time
 method = {'RK4': AdvectionRK4, 'EE': AdvectionEE, 'RK45': AdvectionRK45}
 
 
-def ground_truth(lon,lat):
+def ground_truth(lon, lat):
     day = 11.6
     r = 1 / (day * 86400)
     beta = 2e-11
     a = 2000000
     e_s = r / (beta * a)
-    psi = (1 - np.exp(-lon * math.pi / 180 / e_s) - lon *\
-        math.pi / 180) * math.pi * np.sin(math.pi ** 2 * lat / 180)
+    psi = (1 - np.exp(-lon * math.pi / 180 / e_s) - lon *
+           math.pi / 180) * math.pi * np.sin(math.pi ** 2 * lat / 180)
     return psi
 
 
@@ -56,18 +56,18 @@ def analytical_eddies_grid(xdim=200, ydim=200):
     for t in range(time.size):
         for i in range(lon.size):
             for j in range(lat.size):
-                U[i, j, t] = -(1 - math.exp(-lon[i] * math.pi / 180 / e_s) -\
-                            lon[i] * math.pi / 180) * math.pi ** 2 *\
-                            math.cos(math.pi ** 2 * lat[j] / 180)
-                V[i, j, t] = (math.exp(-lon[i] * math.pi / 180 / e_s) / e_s -\
-                            1) * math.pi * math.sin(math.pi ** 2 * lat[j] / 180)
+                U[i, j, t] = -(1 - math.exp(-lon[i] * math.pi / 180 / e_s) -
+                               lon[i] * math.pi / 180) * math.pi ** 2 *\
+                    math.cos(math.pi ** 2 * lat[j] / 180)
+                V[i, j, t] = (math.exp(-lon[i] * math.pi / 180 / e_s) / e_s -
+                              1) * math.pi * math.sin(math.pi ** 2 * lat[j] / 180)
 
     return Grid.from_data(U, lon, lat, V, lon, lat,
-                              depth, time, field_data={'P': P})
+                          depth, time, field_data={'P': P})
 
 
 def stommel_eddies_example(grid, npart=1, mode='jit', verbose=False,
-                          method=AdvectionRK4):
+                           method=AdvectionRK4):
     """Configuration of a particle set that follows two moving eddies
 
     :arg grid: :class NEMOGrid: that defines the flow field
@@ -85,7 +85,7 @@ def stommel_eddies_example(grid, npart=1, mode='jit', verbose=False,
     hours = 27.635*24.*3600.-330.
     substeps = 1
     timesteps = 20.
-    dt = hours/timesteps    #To make sure it ends exactly on the end time
+    dt = hours/timesteps    # To make sure it ends exactly on the end time
 
     tic = time.clock()
 
@@ -93,7 +93,7 @@ def stommel_eddies_example(grid, npart=1, mode='jit', verbose=False,
         for particle in pset:
             particle.time = 0.
             particle.dt = dt
-        tol = 1e-13 #3e-5
+        tol = 1e-13
         print("Stommel: Advecting %d particles with adaptive step size"
               % (npart))
         pset.execute(method, timesteps=timesteps, dt=dt,
@@ -157,4 +157,4 @@ Example of particle advection around an idealised peninsula""")
         Stats("Profile.prof").strip_dirs().sort_stats("time").print_stats(10)
     else:
         stommel_eddies_example(grid, args.particles, mode=args.mode,
-                              verbose=args.verbose, method=method[args.method])
+                               verbose=args.verbose, method=method[args.method])

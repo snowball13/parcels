@@ -58,8 +58,8 @@ class Kernel(object):
                                               self.funcvars)
             self.field_args = kernelgen.field_args
             loopgen = LoopGenerator(grid, ptype)
-            adaptive = True if self.funcname == 'AdvectionRK45' or self.funcname ==\
-                                'AdvectionRK45UpdateP' else False
+            adaptive = True if self.funcname == 'AdvectionRK45' or\
+                self.funcname == 'AdvectionRK45UpdateP' else False
             self.ccode = loopgen.generate(self.funcname, self.field_args,
                                           kernel_ccode, adaptive=adaptive)
 
@@ -87,7 +87,7 @@ class Kernel(object):
 
     def execute_adaptive(self, pset, tol, output_time=None, end_time=None):
         for p in pset.particles:
-            if output_time == None:
+            if output_time is None:
                 self.pyfunc(p, pset.grid, end_time, tol)
                 return
             while math.ceil(p.time) < math.floor(output_time):

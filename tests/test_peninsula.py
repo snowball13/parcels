@@ -1,5 +1,5 @@
 from parcels import Grid, Particle, JITParticle,\
-                    AdvectionRK4, AdvectionEE, AdvectionRK45
+    AdvectionRK4, AdvectionEE, AdvectionRK45
 from argparse import ArgumentParser
 import numpy as np
 import math  # NOQA

@@ -1,5 +1,5 @@
 from parcels import Grid, Particle, JITParticle,\
-                    AdvectionRK4, AdvectionEE, AdvectionRK45
+    AdvectionRK4, AdvectionEE, AdvectionRK45
 from argparse import ArgumentParser
 import numpy as np
 import math
@@ -82,8 +82,8 @@ def moving_eddies_example(grid, npart=2, mode='jit', verbose=False,
 
     # Execute for 25 days, with 5min timesteps and hourly output
     hours = 16.*86400.
-    substeps = 1   #Output every substeps dt
-    dt = 7200.     #Timestep size
+    substeps = 1   # Output every substeps dt
+    dt = 7200.     # Timestep size
 
     if method == AdvectionRK45:
         for particle in pset:
