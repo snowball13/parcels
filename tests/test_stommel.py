@@ -84,13 +84,13 @@ def stommel_eddies_example(grid, npart=1, mode='jit', verbose=False,
     hours = 27.635*24.*3600.-330.
     substeps = 1
     timesteps = 20.
-    dt = hours/timesteps    #To make sure it ends exactly on the end time
+    dt = hours/timesteps    # To make sure it ends exactly on the end time
 
     if method == AdvectionRK45:
         for particle in pset:
             particle.time = 0.
             particle.dt = dt
-        tol = 1e-13 #3e-5
+        tol = 1e-13
         print("Stommel: Advecting %d particles with adaptive step size"
               % (npart))
         pset.execute(method, timesteps=timesteps, dt=dt,

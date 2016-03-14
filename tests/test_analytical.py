@@ -80,11 +80,12 @@ def analytical_eddies_grid(xdim=20, ydim=20):
         # Moving decaying eddy
         if 1:
             U[:, :, t] = u_g * np.exp(-gamma_g * time[t]) + (u_0 - u_g) *\
-                        np.exp(-gamma * time[t]) * math.cos(f * time[t])
-            V[:, :, t] = -(u_0 - u_g) * np.exp(-gamma * time[t]) * math.sin(f * time[t])
+                np.exp(-gamma * time[t]) * math.cos(f * time[t])
+            V[:, :, t] = -(u_0 - u_g) * np.exp(-gamma * time[t]) *\
+                math.sin(f * time[t])
 
     return Grid.from_data(U, lon, lat, V, lon, lat,
-                              depth, time, field_data={'P': P})
+                          depth, time, field_data={'P': P})
 
 
 def analytical_eddies_example(grid, npart=1, mode='jit', verbose=False,
@@ -115,13 +116,15 @@ def analytical_eddies_example(grid, npart=1, mode='jit', verbose=False,
         print("MovingEddies: Advecting %d particles with adaptive timesteps"
               % (npart))
         pset.execute(method, timesteps=hours*substeps*3600/dt, dt=dt,
-                     output_file=pset.ParticleFile(name="AnalyticalParticle" + method.__name__),
+                     output_file=pset.ParticleFile(name="AnalyticalParticle" +
+                                                   method.__name__),
                      output_steps=substeps, tol=tol)
     else:
         print("MovingEddies: Advecting %d particles for %d timesteps"
               % (npart, hours * substeps * 3600 / dt))
         pset.execute(method, timesteps=hours*substeps*3600/dt, dt=dt,
-                     output_file=pset.ParticleFile(name="AnalyticalParticle" + method.__name__),
+                     output_file=pset.ParticleFile(name="AnalyticalParticle" +
+                                                   method.__name__),
                      output_steps=substeps)
 
     # Analytical solution
