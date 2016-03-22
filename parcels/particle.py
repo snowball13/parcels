@@ -11,7 +11,7 @@ __all__ = ['Particle', 'ParticleSet', 'JITParticle',
 
 def AdvectionRK4(particle, grid, time, dt):
     f_lat = dt / 1000. / 1.852 / 60.
-    f_lon = f_lat / math.cos(particle.lat*math.pi/180)
+    f_lon = f_lat# / math.cos(particle.lat*math.pi/180)
     u1 = grid.U[time, particle.lon, particle.lat]
     v1 = grid.V[time, particle.lon, particle.lat]
     lon1, lat1 = (particle.lon + u1*.5*f_lon, particle.lat + v1*.5*f_lat)
@@ -52,7 +52,7 @@ def AdvectionRK45(particle, grid, output_time, tol):
 
     while True:
         f_lat = dt / 1000. / 1.852 / 60.
-        f_lon = f_lat / math.cos(particle.lat*math.pi/180)
+        f_lon = f_lat# / math.cos(particle.lat*math.pi/180)
 
         u1 = grid.U[time, particle.lon, particle.lat]
         v1 = grid.V[time, particle.lon, particle.lat]
@@ -145,9 +145,12 @@ class Particle(object):
     """
     user_vars = OrderedDict()
 
-    def __init__(self, lon, lat, grid, cptr=None):
+    def __init__(self, lon, lat, grid, dt=3600., time=0., cptr=None):
         self.lon = lon
         self.lat = lat
+        self.time = time
+        self.dt = dt
+
         self.xi = np.where(self.lon >= grid.U.lon)[0][-1]
         self.yi = np.where(self.lat >= grid.U.lat)[0][-1]
 
@@ -155,7 +158,8 @@ class Particle(object):
             setattr(self, var, 0)
 
     def __repr__(self):
-        return "P(%f, %f)[%d, %d]" % (self.lon, self.lat, self.xi, self.yi)
+        return "P(%f, %f, %f)[%d, %d]" % (self.lon, self.lat, self.time,
+                                          self.xi, self.yi)
 
 
 class JITParticle(Particle):
@@ -169,6 +173,7 @@ class JITParticle(Particle):
     """
 
     base_vars = OrderedDict([('lon', np.float32), ('lat', np.float32),
+                             ('time', np.float32), ('dt', np.float32),
                              ('xi', np.int32), ('yi', np.int32)])
     user_vars = OrderedDict()
 
@@ -187,29 +192,6 @@ class JITParticle(Particle):
             super(JITParticle, self).__setattr__(key, value)
         else:
             self._cptr.__setitem__(key, value)
-
-
-class TimeParticle(Particle):
-    """Class encapsualting the basic attributes of a particle
-
-    :param lon: Initial longitude of particle
-    :param lat: Initial latitude of particle
-    :param time: Initial time of particle
-    :param grid: :Class Grid: object to track this particle on
-    """
-
-    def __init__(self, lon, lat, grid, dt=3600, t=0, cptr=None):
-        self.lon = lon
-        self.lat = lat
-        self.time = t
-        self.dt = dt
-
-        self.xi = np.where(self.lon >= grid.U.lon)[0][-1]
-        self.yi = np.where(self.lat >= grid.U.lat)[0][-1]
-
-    def __repr__(self):
-        return "P(%f, %f, %f)[%d, %d]" % (self.lon, self.lat, self.time, self.xi,
-                                          self.yi)
 
 
 class ParticleType(object):
