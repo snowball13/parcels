@@ -106,7 +106,7 @@ def analytical_eddies_example(grid, npart=1, mode='jit', verbose=False,
     # Execute for 3 days, with 5min timesteps and hourly output
     hours = 3*24
     substeps = 1
-    dt = 300    
+    dt = 300
 
     if method == AdvectionRK45:
         for particle in pset:

@@ -67,7 +67,7 @@ def stommel_grid(xdim=200, ydim=200):
 
 
 def stommel_example(grid, npart=1, mode='jit', verbose=False,
-                           method=AdvectionRK4):
+                    method=AdvectionRK4):
     """Configuration of a particle set that follows two moving eddies
 
     :arg grid: :class NEMOGrid: that defines the flow field
@@ -158,4 +158,4 @@ Example of particle advection in the steady-state solution of the Stommel equati
         Stats("Profile.prof").strip_dirs().sort_stats("time").print_stats(10)
     else:
         stommel_example(grid, args.particles, mode=args.mode,
-                               verbose=args.verbose, method=method[args.method])
+                        verbose=args.verbose, method=method[args.method])
