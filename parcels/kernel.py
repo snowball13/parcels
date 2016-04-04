@@ -6,6 +6,19 @@ from ctypes import c_int, c_float, c_double, c_void_p, byref
 from ast import parse, FunctionDef, Module
 import inspect
 from copy import deepcopy
+import re
+
+
+re_indent = re.compile(r"^(\s+)")
+
+
+def fix_indentation(string):
+    """Fix indentation to allow in-lined kernel definitions"""
+    lines = string.split('\n')
+    indent = re_indent.match(lines[0])
+    if indent:
+        lines = [l.replace(indent.groups()[0], '', 1) for l in lines]
+    return "\n".join(lines)
 
 
 class Kernel(object):
@@ -22,7 +35,8 @@ class Kernel(object):
             self.funcname = pyfunc.__name__
             self.funcvars = list(pyfunc.__code__.co_varnames)
             # Parse the Python code into an AST
-            self.py_ast = parse(inspect.getsource(pyfunc.__code__))
+            funccode = inspect.getsource(pyfunc.__code__)
+            self.py_ast = parse(fix_indentation(funccode))
             self.py_ast = self.py_ast.body[0]
             self.pyfunc = pyfunc
         else:
@@ -44,7 +58,7 @@ class Kernel(object):
             exec(compile(py_mod, "<ast>", "exec"), user_ctx)
             self.pyfunc = user_ctx[self.funcname]
 
-        self.name = "%s%s" % (ptype.name, funcname)
+        self.name = "%s%s" % (ptype.name, self.funcname)
 
         self.src_file = str(path.local("%s.c" % self.name))
         self.lib_file = str(path.local("%s.so" % self.name))
@@ -58,8 +72,7 @@ class Kernel(object):
                                               self.funcvars)
             self.field_args = kernelgen.field_args
             loopgen = LoopGenerator(grid, ptype)
-            adaptive = True if self.funcname == 'AdvectionRK45' or\
-                self.funcname == 'AdvectionRK45UpdateP' else False
+            adaptive = 'AdvectionRK45' in self.funcname
             self.ccode = loopgen.generate(self.funcname, self.field_args,
                                           kernel_ccode, adaptive=adaptive)
 
@@ -82,7 +95,8 @@ class Kernel(object):
         else:
             for _ in range(int(timesteps)):
                 for p in pset.particles:
-                    self.pyfunc(p, pset.grid, time, dt)
+                    if p.active == 1:
+                        self.pyfunc(p, pset.grid, time, dt)
                 time += dt
 
     def execute_adaptive(self, pset, tol, output_time=None, end_time=None):

@@ -1,10 +1,9 @@
-from parcels import Grid, Particle, JITParticle,\
-    AdvectionRK4, AdvectionEE, AdvectionRK45
+from parcels import Grid, Particle, JITParticle
+from parcels import AdvectionRK4, AdvectionEE, AdvectionRK45
 from argparse import ArgumentParser
 import numpy as np
 import math
 import pytest
-import time
 from py import path
 
 
@@ -88,8 +87,6 @@ def stommel_example(grid, npart=1, mode='jit', verbose=False,
     timesteps = 1000.
     dt = hours/timesteps    # To make sure it ends exactly on the end time
 
-    tic = time.clock()
-
     ker = pset.Kernel(method)
     ker.name = "%s%s" % (pset.ptype.name, 'Stommel')
     ker.src_file = str(path.local("%s.c" % ker.name))
@@ -113,10 +110,8 @@ def stommel_example(grid, npart=1, mode='jit', verbose=False,
                      output_file=pset.ParticleFile(name="StommelParticle" + method.__name__),
                      output_steps=substeps)
 
-    toc = time.clock()
     if verbose:
         print("Final particle positions:\n%s" % pset)
-        print("Execution time: %f s" % (toc-tic))
 
     return pset
 

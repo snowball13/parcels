@@ -2,7 +2,7 @@ from parcels.kernel import Kernel
 from parcels.compiler import GNUCompiler
 import numpy as np
 import netCDF4
-from collections import OrderedDict
+from collections import OrderedDict, Iterable
 import math
 
 __all__ = ['Particle', 'ParticleSet', 'JITParticle',
@@ -90,8 +90,8 @@ def AdvectionRK45(particle, grid, output_time, tol):
         lat_5th = particle.lat + (v1 * b5[0] + v2 * b5[1] + v3 * b5[2] + v4 *
                                   b5[3] + v5 * b5[4] + v6 * b5[5]) * f_lat
 
-        kappa = math.sqrt((lon_5th - lon_4th) * (lon_5th - lon_4th) +
-                          (lat_5th - lat_4th) * (lat_5th - lat_4th))
+        kappa = math.sqrt(math.pow(lon_5th - lon_4th, 2) +
+                          math.pow(lat_5th - lat_4th, 2))
         if kappa <= dt*tol:
             particle.lon = lon_4th
             particle.lat = lat_4th
@@ -153,6 +153,7 @@ class Particle(object):
 
         self.xi = np.where(self.lon >= grid.U.lon)[0][-1]
         self.yi = np.where(self.lat >= grid.U.lat)[0][-1]
+        self.active = 1
 
         for var in self.user_vars:
             setattr(self, var, 0)
@@ -160,6 +161,16 @@ class Particle(object):
     def __repr__(self):
         return "P(%f, %f, %f)[%d, %d]" % (self.lon, self.lat, self.time,
                                           self.xi, self.yi)
+<<<<<<< HEAD
+=======
+
+    @classmethod
+    def getPType(cls):
+        return ParticleType(cls)
+
+    def delete(self):
+        self.active = 0
+>>>>>>> aeb77b623cb8808109f6ecf11fc1ce4e21adc799
 
 
 class JITParticle(Particle):
@@ -174,11 +185,20 @@ class JITParticle(Particle):
 
     base_vars = OrderedDict([('lon', np.float32), ('lat', np.float32),
                              ('time', np.float32), ('dt', np.float32),
+<<<<<<< HEAD
                              ('xi', np.int32), ('yi', np.int32)])
+=======
+                             ('xi', np.int32), ('yi', np.int32),
+                             ('active', np.int32)])
+>>>>>>> aeb77b623cb8808109f6ecf11fc1ce4e21adc799
     user_vars = OrderedDict()
 
     def __init__(self, *args, **kwargs):
         self._cptr = kwargs.pop('cptr', None)
+        if self._cptr is None:
+            # Allocate data for a single particle
+            ptype = super(JITParticle, self).getPType()
+            self._cptr = np.empty(1, dtype=ptype.dtype)[0]
         super(JITParticle, self).__init__(*args, **kwargs)
 
     def __getattr__(self, attr):
@@ -215,7 +235,7 @@ class ParticleType(object):
         self.user_vars = pclass.user_vars
 
     def __repr__(self):
-        return self.name
+        return "PType<self.name>"
 
     @property
     def dtype(self):
@@ -287,6 +307,30 @@ class ParticleSet(object):
     def __setitem__(self, key, value):
         self.particles[key] = value
 
+    def __iadd__(self, particles):
+        self.add(particles)
+        return self
+
+    def add(self, particles):
+        if isinstance(particles, ParticleSet):
+            particles = particles.particles
+        if not isinstance(particles, Iterable):
+            particles = [particles]
+        self.particles = np.append(self.particles, particles)
+        if self.ptype.uses_jit:
+            particles_data = [p._cptr for p in particles]
+            self._particle_data = np.append(self._particle_data, particles_data)
+
+    def remove(self, indices):
+        if isinstance(indices, Iterable):
+            particles = [self.particles[i] for i in indices]
+        else:
+            particles = self.particles[indices]
+        if self.ptype.uses_jit:
+            self._particle_data = np.delete(self._particle_data, indices)
+        self.particles = np.delete(self.particles, indices)
+        return particles
+
     def execute(self, pyfunc=AdvectionRK4, time=None, dt=1., timesteps=1,
                 output_file=None, output_steps=-1, tol=None):
         """Execute a given kernel function over the particle set for
@@ -338,6 +382,11 @@ class ParticleSet(object):
                 current += output_steps * dt
                 if output_file:
                     output_file.write(self, current)
+<<<<<<< HEAD
+=======
+        to_remove = [i for i, p in enumerate(self.particles) if p.active == 0]
+        self.remove(to_remove)
+>>>>>>> aeb77b623cb8808109f6ecf11fc1ce4e21adc799
 
     def show(self, **kwargs):
         import matplotlib.pyplot as plt
