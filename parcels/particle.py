@@ -161,8 +161,6 @@ class Particle(object):
     def __repr__(self):
         return "P(%f, %f, %f)[%d, %d]" % (self.lon, self.lat, self.time,
                                           self.xi, self.yi)
-<<<<<<< HEAD
-=======
 
     @classmethod
     def getPType(cls):
@@ -170,7 +168,6 @@ class Particle(object):
 
     def delete(self):
         self.active = 0
->>>>>>> aeb77b623cb8808109f6ecf11fc1ce4e21adc799
 
 
 class JITParticle(Particle):
@@ -185,12 +182,8 @@ class JITParticle(Particle):
 
     base_vars = OrderedDict([('lon', np.float32), ('lat', np.float32),
                              ('time', np.float32), ('dt', np.float32),
-<<<<<<< HEAD
-                             ('xi', np.int32), ('yi', np.int32)])
-=======
                              ('xi', np.int32), ('yi', np.int32),
                              ('active', np.int32)])
->>>>>>> aeb77b623cb8808109f6ecf11fc1ce4e21adc799
     user_vars = OrderedDict()
 
     def __init__(self, *args, **kwargs):
@@ -382,11 +375,8 @@ class ParticleSet(object):
                 current += output_steps * dt
                 if output_file:
                     output_file.write(self, current)
-<<<<<<< HEAD
-=======
         to_remove = [i for i, p in enumerate(self.particles) if p.active == 0]
         self.remove(to_remove)
->>>>>>> aeb77b623cb8808109f6ecf11fc1ce4e21adc799
 
     def show(self, **kwargs):
         import matplotlib.pyplot as plt
