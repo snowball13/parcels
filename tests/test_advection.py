@@ -1,5 +1,5 @@
 from parcels import Grid, Particle, JITParticle
-from parcels import AdvectionEE, AdvectionRK4, AdvectionRK45
+from parcels import AdvectionEE_2D, AdvectionRK4_2D, AdvectionRK45_2D
 import numpy as np
 import pytest
 import math
@@ -8,7 +8,7 @@ from argparse import ArgumentParser
 
 
 ptype = {'scipy': Particle, 'jit': JITParticle}
-kernel = {'EE': AdvectionEE, 'RK4': AdvectionRK4, 'RK45': AdvectionRK45}
+kernel = {'EE': AdvectionEE_2D, 'RK4': AdvectionRK4_2D, 'RK45': AdvectionRK45_2D}
 
 # Some constants
 f = 1.e-4
@@ -40,7 +40,7 @@ def test_advection_zonal(lon, lat, mode, npart=10):
     pset = grid.ParticleSet(npart, pclass=ptype[mode],
                             lon=np.zeros(npart, dtype=np.float32) + 20.,
                             lat=np.linspace(0, 80, npart, dtype=np.float32))
-    pset.execute(AdvectionRK4, endtime=delta(hours=2), dt=delta(seconds=30))
+    pset.execute(AdvectionRK4_2D, endtime=delta(hours=2), dt=delta(seconds=30))
     assert (np.diff(np.array([p.lon for p in pset])) > 1.e-4).all()
 
 
@@ -57,7 +57,7 @@ def test_advection_meridional(lon, lat, mode, npart=10):
                             lon=np.linspace(-60, 60, npart, dtype=np.float32),
                             lat=np.linspace(0, 30, npart, dtype=np.float32))
     delta_lat = np.diff(np.array([p.lat for p in pset]))
-    pset.execute(AdvectionRK4, endtime=delta(hours=2), dt=delta(seconds=30))
+    pset.execute(AdvectionRK4_2D, endtime=delta(hours=2), dt=delta(seconds=30))
     assert np.allclose(np.diff(np.array([p.lat for p in pset])), delta_lat, rtol=1.e-4)
 
 

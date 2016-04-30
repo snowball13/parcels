@@ -1,5 +1,5 @@
 from parcels import Grid, Particle, JITParticle
-from parcels import AdvectionRK4, AdvectionEE, AdvectionRK45
+from parcels import AdvectionRK4_2D, AdvectionEE_2D, AdvectionRK45_2D
 from argparse import ArgumentParser
 import numpy as np
 import math
@@ -7,7 +7,7 @@ import pytest
 from datetime import timedelta as delta
 
 
-method = {'RK4': AdvectionRK4, 'EE': AdvectionEE, 'RK45': AdvectionRK45}
+method = {'RK4': AdvectionRK4_2D, 'EE': AdvectionEE_2D, 'RK45': AdvectionRK45_2D}
 
 
 def ground_truth(lon, lat):
@@ -64,7 +64,7 @@ def stommel_grid(xdim=200, ydim=200):
 
 
 def stommel_example(grid, npart=1, mode='jit', verbose=False,
-                    method=AdvectionRK4):
+                    method=AdvectionRK4_2D):
     """Configuration of a particle set that follows two moving eddies
 
     :arg grid: :class NEMOGrid: that defines the flow field
