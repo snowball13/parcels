@@ -146,8 +146,8 @@ class Particle(object):
             setattr(self, var, 0)
 
     def __repr__(self):
-        return "P(%f, %f, %f)[%d, %d]" % (self.lon, self.lat, self.time,
-                                          self.xi, self.yi)
+        return "P(%f, %f, %f, %f)[%d, %d, %d]" % (self.lon, self.lat, self.dep, self.time,
+                                                  self.xi, self.yi, self.zi)
 
     @classmethod
     def getPType(cls):
