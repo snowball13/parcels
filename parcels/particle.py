@@ -206,9 +206,9 @@ class JITParticle(Particle):
     :param user_vars: Class variable that defines additional particle variables
     """
 
-    base_vars = OrderedDict([('lon', np.float32), ('lat', np.float32),
+    base_vars = OrderedDict([('lon', np.float32), ('lat', np.float32), ('dep', np.float32),
                              ('time', np.float32), ('dt', np.float32),
-                             ('xi', np.int32), ('yi', np.int32),
+                             ('xi', np.int32), ('yi', np.int32), ('zi', np.int32),
                              ('active', np.int32)])
     user_vars = OrderedDict()
 
