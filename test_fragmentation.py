@@ -90,29 +90,30 @@ def test_pset_add_explicit(grid, mode, npart=100):
     assert np.allclose([p.lon for p in pset], lon, rtol=1e-12)
     assert np.allclose([p.lat for p in pset], lat, rtol=1e-12)
 
+
 def fragmentation(particle, grid, time, dt):#, pset):
+
+	print "total elapsed time:", time
 	
-	particle.age += dt
-	print 'total elapsed time:',time
+	# Iterate over the particles in pset, increasing ages over loop. 
+	for p in pset:
 
-	# If particle is older than 1 day, create new particle & add to pset.
-	if particle.age > 86400.:
-		new_particle = Particle(particle.lon, particle.lat, grid)
-		# New paticle doesn't have 'age' attribute unless explicity specified below.
-		new_particle.age = 0.
-		pset.add(new_particle)
-		print "new pset:", pset
-		particle.age = 0.
+		# If particle is older than 1 day, create new particle & add to pset.
+		if p.age > 86400.:
+			new_particle = Particle(particle.lon, particle.lat, grid)
+			# New paticle doesn't have 'age' attribute unless explicity specified below.
+			new_particle.age = 0.
+			pset.add(new_particle)
+			print "new pset:", pset
+			p.age = 0.
 
-	# There should be only two particles by the end...
+		p.age += dt
+		print p.age
 
-	for particle in pset:
-		print particle.age
-
-	# Track the number of particles in pset ober time. 
+	# Track the number of particles in pset ober time.
 	print "number of particles is now:", pset.size
 		
-	
+
 def moving_eddies_example(grid, npart=1, mode='jit', verbose=False,
                           method=AdvectionRK4):
     """Configuration of a particle set that follows two moving eddies
@@ -141,7 +142,7 @@ def moving_eddies_example(grid, npart=1, mode='jit', verbose=False,
             return "P(%.4f, %.4f)[age=%.5f]" % (self.lon, self.lat,
                                                           self.age)
     
-    # Must define pset and npart as a global variable in order for the kernel to 'find' it.
+    # Must define pset as a global variable in order for the kernel to 'find' it.
     global pset
     pset = grid.ParticleSet(size=npart, pclass=MyParticle,
                             start=(3.3, 46.), finish=(3.3, 47.8))
@@ -152,22 +153,22 @@ def moving_eddies_example(grid, npart=1, mode='jit', verbose=False,
     if verbose:
         print("Initial particle positions:\n%s" % pset)
 
-    # Execte for 1.1 days, with 5min timesteps and hourly output
-    endtime = delta(days=1.1)
+    # Execte for specified days, with 5min timesteps and hourly output
+    endtime = delta(days=1.2)
     print("MovingEddies: Advecting %d particles for %s" % (npart, str(endtime)))
 
     # Add the function defined above as the kernel to be used in pset.execute().
     k_frag = pset.Kernel(fragmentation)
+
+    # Remove the time interval so that it isn't passed to the kernel later. Causes issues otherwise.
     pset.execute(method + k_frag, endtime=endtime, dt=delta(minutes=5),
-                 interval=delta(hours=1), show_movie=False)
+                 show_movie=False)#, interval=delta(hours=1))
+
+    
 
     if verbose:
         print("Final particle positions:\n%s" % pset)
     print pset
-
-    # Check particles in pset for age. 
-    for p in pset:
-	print p.age
 
     return 'Final particle set:', pset
 
