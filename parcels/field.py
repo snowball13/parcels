@@ -54,16 +54,16 @@ class UnitConverter(object):
     source_unit = None
     target_unit = None
 
-    def to_target(self, value, x, y):
+    def to_target(self, value, x, y, z):
         return value
 
-    def ccode_to_target(self, x, y):
+    def ccode_to_target(self, x, y, z):
         return "1.0"
 
-    def to_source(self, value, x, y):
+    def to_source(self, value, x, y, z):
         return value
 
-    def ccode_to_source(self, x, y):
+    def ccode_to_source(self, x, y, z):
         return "1.0"
 
 
@@ -72,10 +72,10 @@ class Geographic(UnitConverter):
     source_unit = 'm'
     target_unit = 'degree'
 
-    def to_target(self, value, x, y):
+    def to_target(self, value, x, y, z):
         return value / 1000. / 1.852 / 60.
 
-    def ccode_to_target(self, x, y):
+    def ccode_to_target(self, x, y, z):
         return "(1.0 / (1000.0 * 1.852 * 60.0))"
 
 
@@ -86,10 +86,10 @@ class GeographicPolar(UnitConverter):
     source_unit = 'm'
     target_unit = 'degree'
 
-    def to_target(self, value, x, y):
+    def to_target(self, value, x, y, z):
         return value / 1000. / 1.852 / 60. / cos(y * pi / 180)
 
-    def ccode_to_target(self, x, y):
+    def ccode_to_target(self, x, y, z):
         return "(1.0 / (1000. * 1.852 * 60. * cos(%s * M_PI / 180)))" % y
 
 
@@ -233,10 +233,23 @@ class Field(object):
         return([Field(name + '_dx', dVdx, lon, lat, self.depth, time),
                 Field(name + '_dy', dVdy, lon, lat, self.depth, time)])
 
+    def interpolator3D(self, idx, time, z, y, x):
+        # First interpolate in the horizontal, then in the vertical
+        zdx = self.find_higher_index('depth', z)
+        f0 = self.interpolator2D(idx, z_idx=zdx-1)((y, x))
+        f1 = self.interpolator2D(idx, z_idx=zdx)((y, x))
+        z0 = self.depth[zdx-1]
+        z1 = self.depth[zdx]
+        return f0 + (f1 - f0) * ((z - z0) / (z1 - z0))
+
     @cachedmethod(operator.attrgetter('interpolator_cache'))
-    def interpolator2D(self, t_idx):
-        return RegularGridInterpolator((self.lat, self.lon),
-                                       self.data[t_idx, :])
+    def interpolator2D(self, t_idx, z_idx=None):
+        if z_idx is None:
+            return RegularGridInterpolator((self.lat, self.lon),
+                                           self.data[t_idx, :])
+        else:
+            return RegularGridInterpolator((self.lat, self.lon),
+                                           self.data[t_idx, z_idx, :, :])
 
     def interpolator1D(self, idx, time, y, x):
         # Return linearly interpolated field value:
@@ -262,17 +275,19 @@ class Field(object):
         else:
             return time_index.argmin()
 
-    def eval(self, time, x, y):
+    def eval(self, time, x, y, z):
         idx = self.time_index(time)
         if idx > 0:
             value = self.interpolator1D(idx, time, y, x)
-        else:
+        elif self.depth.size == 1:
             value = self.interpolator2D(idx)((y, x))
-        return self.units.to_target(value, x, y)
+        else:
+            value = self.interpolator3D(idx, time, z, y, x)
+        return self.units.to_target(value, x, y, z)
 
-    def ccode_subscript(self, t, x, y):
+    def ccode_subscript(self, t, x, y, z):
         ccode = "%s * temporal_interpolation_linear(%s, %s, %s, %s, %s, %s)" \
-                % (self.units.ccode_to_target(x, y),
+                % (self.units.ccode_to_target(x, y, z),
                    x, y, "particle->xi", "particle->yi", t, self.name)
         return ccode
 
