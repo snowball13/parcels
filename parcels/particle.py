@@ -124,19 +124,22 @@ class Particle(object):
 
     :param lon: Initial longitude of particle
     :param lat: Initial latitude of particle
+    :param dep: Initial depth of particle
     :param grid: :Class Grid: object to track this particle on
     :param user_vars: Dictionary of any user variables that might be defined in subclasses
     """
     user_vars = OrderedDict()
 
-    def __init__(self, lon, lat, grid, dt=3600., time=0., cptr=None):
+    def __init__(self, lon, lat, dep, grid, dt=3600., time=0., cptr=None):
         self.lon = lon
         self.lat = lat
+        self.dep = dep
         self.time = time
         self.dt = dt
 
         self.xi = np.where(self.lon >= grid.U.lon)[0][-1]
         self.yi = np.where(self.lat >= grid.U.lat)[0][-1]
+        self.zi = np.where(self.dep >= grid.U.depth)[0][-1]
         self.active = 1
 
         for var in self.user_vars:
@@ -236,6 +239,7 @@ class ParticleSet(object):
     :param pclass: Optional class object that defines custom particle
     :param lon: List of initial longitude values for particles
     :param lat: List of initial latitude values for particles
+    :param dep: List of initial depth values for particles
     :param start: Optional starting point for initilisation of particles
                  on a straight line. Use start/finish instead of lat/lon.
     :param finish: Optional end point for initilisation of particles on a
@@ -245,7 +249,7 @@ class ParticleSet(object):
     """
 
     def __init__(self, size, grid, pclass=JITParticle,
-                 lon=None, lat=None, start=None, finish=None, start_field=None):
+                 lon=None, lat=None, dep=None, start=None, finish=None, start_field=None):
         self.grid = grid
         self.particles = np.empty(size, dtype=pclass)
         self.ptype = ParticleType(pclass)
@@ -267,6 +271,7 @@ class ParticleSet(object):
             assert(lon is None and lat is None)
             lon = np.linspace(start[0], finish[0], size, dtype=np.float32)
             lat = np.linspace(start[1], finish[1], size, dtype=np.float32)
+            dep = np.linspace(start[2], finish[2], size, dtype=np.float32)
 
         if start_field is not None:
             lon, lat = positions_from_density_field(size, start_field)
@@ -275,8 +280,11 @@ class ParticleSet(object):
             # Initialise from lists of lon/lat coordinates
             assert(size == len(lon) and size == len(lat))
 
+            if dep is None:
+                dep = np.zeros(size, np.float32)
+
             for i in range(size):
-                self.particles[i] = pclass(lon[i], lat[i], grid=grid, cptr=cptr(i))
+                self.particles[i] = pclass(lon[i], lat[i], dep[i], grid=grid, cptr=cptr(i))
         else:
             raise ValueError("Latitude and longitude required for generating ParticleSet")
 
@@ -511,11 +519,11 @@ class ParticleFile(object):
         self.lon.units = "degrees_east"
         self.lon.axis = "X"
 
-        self.z = self.dataset.createVariable("z", "f4", ("trajectory", "obs"), fill_value=np.nan)
-        self.z.long_name = ""
-        self.z.standard_name = "depth"
-        self.z.units = "m"
-        self.z.positive = "down"
+        self.dep = self.dataset.createVariable("z", "f4", ("trajectory", "obs"), fill_value=np.nan)
+        self.dep.long_name = ""
+        self.dep.standard_name = "depth"
+        self.dep.units = "m"
+        self.dep.positive = "down"
 
         if particleset.ptype.user_vars is not None:
             self.user_vars = particleset.ptype.user_vars.keys()
@@ -540,9 +548,9 @@ class ParticleFile(object):
             # Write multiple particles at once
             pset = data
             self.time[:, self.idx] = time
+            self.dep[:, self.idx] = np.array([p.dep for p in pset])
             self.lat[:, self.idx] = np.array([p.lat for p in pset])
             self.lon[:, self.idx] = np.array([p.lon for p in pset])
-            self.z[:, self.idx] = np.zeros(pset.size, dtype=np.float32)
             for var in self.user_vars:
                 getattr(self, var)[:, self.idx] = np.array([getattr(p, var) for p in pset])
         else:
