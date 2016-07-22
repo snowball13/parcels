@@ -13,31 +13,70 @@ except:
     plt = None
 
 
-__all__ = ['Particle', 'ParticleSet', 'JITParticle',
-           'ParticleFile', 'AdvectionRK4', 'AdvectionEE', 'AdvectionRK45']
+__all__ = ['Particle', 'JITParticle', 'ParticleSet', 'ParticleFile',
+           'AdvectionRK4_2D', 'AdvectionRK4_3D', 'AdvectionRK45_2D',
+           'AdvectionEE_2D', 'AdvectionEE_3D']
 
 
-def AdvectionRK4(particle, grid, time, dt):
-    u1 = grid.U[time, particle.lon, particle.lat]
-    v1 = grid.V[time, particle.lon, particle.lat]
+def AdvectionRK4_2D(particle, grid, time, dt):
+    u1 = grid.U[time, particle.lon, particle.lat, particle.dep]
+    v1 = grid.V[time, particle.lon, particle.lat, particle.dep]
     lon1, lat1 = (particle.lon + u1*.5*dt, particle.lat + v1*.5*dt)
-    u2, v2 = (grid.U[time + .5 * dt, lon1, lat1], grid.V[time + .5 * dt, lon1, lat1])
+    u2 = grid.U[time + .5 * dt, lon1, lat1, particle.dep]
+    v2 = grid.V[time + .5 * dt, lon1, lat1, particle.dep]
     lon2, lat2 = (particle.lon + u2*.5*dt, particle.lat + v2*.5*dt)
-    u3, v3 = (grid.U[time + .5 * dt, lon2, lat2], grid.V[time + .5 * dt, lon2, lat2])
+    u3 = grid.U[time + .5 * dt, lon2, lat2, particle.dep]
+    v3 = grid.V[time + .5 * dt, lon2, lat2, particle.dep]
     lon3, lat3 = (particle.lon + u3*dt, particle.lat + v3*dt)
-    u4, v4 = (grid.U[time + dt, lon3, lat3], grid.V[time + dt, lon3, lat3])
+    u4 = grid.U[time + dt, lon3, lat3, particle.dep]
+    v4 = grid.V[time + dt, lon3, lat3, particle.dep]
     particle.lon += (u1 + 2*u2 + 2*u3 + u4) / 6. * dt
     particle.lat += (v1 + 2*v2 + 2*v3 + v4) / 6. * dt
 
 
-def AdvectionEE(particle, grid, time, dt):
-    u1 = grid.U[time, particle.lon, particle.lat]
-    v1 = grid.V[time, particle.lon, particle.lat]
+def AdvectionRK4_3D(particle, grid, time, dt):
+    posvertdir = -1.  # TODO: Decide on direction of positive w
+    u1 = grid.U[time, particle.lon, particle.lat, particle.dep]
+    v1 = grid.V[time, particle.lon, particle.lat, particle.dep]
+    lon1, lat1 = (particle.lon + u1*.5*dt, particle.lat + v1*.5*dt)
+    w1 = grid.W[time, particle.lon, particle.lat, particle.dep] * posvertdir
+    dep1 = particle.dep + w1*.5*dt
+    u2 = grid.U[time + .5 * dt, lon1, lat1, dep1]
+    v2 = grid.V[time + .5 * dt, lon1, lat1, dep1]
+    lon2, lat2 = (particle.lon + u2*.5*dt, particle.lat + v2*.5*dt)
+    w2 = grid.W[time + .5 * dt, lon1, lat1, dep1] * posvertdir
+    dep2 = particle.dep + w2*.5*dt
+    u3 = grid.U[time + .5 * dt, lon2, lat2, dep2]
+    v3 = grid.V[time + .5 * dt, lon2, lat2, dep2]
+    lon3, lat3 = (particle.lon + u3*dt, particle.lat + v3*dt)
+    w3 = grid.W[time + .5 * dt, lon2, lat2, dep2] * posvertdir
+    dep3 = particle.dep + w3*.5*dt
+    u4 = grid.U[time + dt, lon3, lat3, dep3]
+    v4 = grid.V[time + dt, lon3, lat3, dep3]
+    w4 = grid.W[time + dt, lon3, lat3, dep3] * posvertdir
+    particle.lon += (u1 + 2*u2 + 2*u3 + u4) / 6. * dt
+    particle.lat += (v1 + 2*v2 + 2*v3 + v4) / 6. * dt
+    particle.dep += (w1 + 2*w2 + 2*w3 + w4) / 6. * dt
+
+
+def AdvectionEE_2D(particle, grid, time, dt):
+    u1 = grid.U[time, particle.lon, particle.lat, particle.dep]
+    v1 = grid.V[time, particle.lon, particle.lat, particle.dep]
     particle.lon += u1 * dt
     particle.lat += v1 * dt
 
 
-def AdvectionRK45(particle, grid, time, dt):
+def AdvectionEE_3D(particle, grid, time, dt):
+    posvertdir = -1.  # TODO: Decide on direction of positive w
+    u1 = grid.U[time, particle.lon, particle.lat, particle.dep]
+    v1 = grid.V[time, particle.lon, particle.lat, particle.dep]
+    w1 = grid.W[time, particle.lon, particle.lat, particle.dep] * posvertdir
+    particle.lon += u1 * dt
+    particle.lat += v1 * dt
+    particle.dep += w1 * dt
+
+
+def AdvectionRK45_2D(particle, grid, time, dt):
     tol = [1e-9]
     c = [1./4., 3./8., 12./13., 1., 1./2.]
     A = [[1./4., 0., 0., 0., 0.],
@@ -48,28 +87,28 @@ def AdvectionRK45(particle, grid, time, dt):
     b4 = [25./216., 0., 1408./2565., 2197./4104., -1./5.]
     b5 = [16./135., 0., 6656./12825., 28561./56430., -9./50., 2./55.]
 
-    u1 = grid.U[time, particle.lon, particle.lat]
-    v1 = grid.V[time, particle.lon, particle.lat]
+    u1 = grid.U[time, particle.lon, particle.lat, particle.dep]
+    v1 = grid.V[time, particle.lon, particle.lat, particle.dep]
     lon1, lat1 = (particle.lon + u1 * A[0][0] * dt,
                   particle.lat + v1 * A[0][0] * dt)
-    u2, v2 = (grid.U[time + c[0] * dt, lon1, lat1],
-              grid.V[time + c[0] * dt, lon1, lat1])
+    u2, v2 = (grid.U[time + c[0] * dt, lon1, lat1, particle.dep],
+              grid.V[time + c[0] * dt, lon1, lat1, particle.dep])
     lon2, lat2 = (particle.lon + (u1 * A[1][0] + u2 * A[1][1]) * dt,
                   particle.lat + (v1 * A[1][0] + v2 * A[1][1]) * dt)
-    u3, v3 = (grid.U[time + c[1] * dt, lon2, lat2],
-              grid.V[time + c[1] * dt, lon2, lat2])
+    u3, v3 = (grid.U[time + c[1] * dt, lon2, lat2, particle.dep],
+              grid.V[time + c[1] * dt, lon2, lat2, particle.dep])
     lon3, lat3 = (particle.lon + (u1 * A[2][0] + u2 * A[2][1] + u3 * A[2][2]) * dt,
                   particle.lat + (v1 * A[2][0] + v2 * A[2][1] + v3 * A[2][2]) * dt)
-    u4, v4 = (grid.U[time + c[2] * dt, lon3, lat3],
-              grid.V[time + c[2] * dt, lon3, lat3])
+    u4, v4 = (grid.U[time + c[2] * dt, lon3, lat3, particle.dep],
+              grid.V[time + c[2] * dt, lon3, lat3, particle.dep])
     lon4, lat4 = (particle.lon + (u1 * A[3][0] + u2 * A[3][1] + u3 * A[3][2] + u4 * A[3][3]) * dt,
                   particle.lat + (v1 * A[3][0] + v2 * A[3][1] + v3 * A[3][2] + v4 * A[3][3]) * dt)
-    u5, v5 = (grid.U[time + c[3] * dt, lon4, lat4],
-              grid.V[time + c[3] * dt, lon4, lat4])
+    u5, v5 = (grid.U[time + c[3] * dt, lon4, lat4, particle.dep],
+              grid.V[time + c[3] * dt, lon4, lat4, particle.dep])
     lon5, lat5 = (particle.lon + (u1 * A[4][0] + u2 * A[4][1] + u3 * A[4][2] + u4 * A[4][3] + u5 * A[4][4]) * dt,
                   particle.lat + (v1 * A[4][0] + v2 * A[4][1] + v3 * A[4][2] + v4 * A[4][3] + v5 * A[4][4]) * dt)
-    u6, v6 = (grid.U[time + c[4] * dt, lon5, lat5],
-              grid.V[time + c[4] * dt, lon5, lat5])
+    u6, v6 = (grid.U[time + c[4] * dt, lon5, lat5, particle.dep],
+              grid.V[time + c[4] * dt, lon5, lat5, particle.dep])
 
     lon_4th = particle.lon + (u1 * b4[0] + u2 * b4[1] + u3 * b4[2] + u4 * b4[3] + u5 * b4[4]) * dt
     lat_4th = particle.lat + (v1 * b4[0] + v2 * b4[1] + v3 * b4[2] + v4 * b4[3] + v5 * b4[4]) * dt
@@ -328,7 +367,7 @@ class ParticleSet(object):
         self.particles = np.delete(self.particles, indices)
         return particles
 
-    def execute(self, pyfunc=AdvectionRK4, starttime=None, endtime=None, dt=1.,
+    def execute(self, pyfunc=AdvectionRK4_2D, starttime=None, endtime=None, dt=1.,
                 runtime=None, interval=None, output_file=None, tol=None,
                 show_movie=False):
         """Execute a given kernel function over the particle set for
