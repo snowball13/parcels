@@ -1,5 +1,6 @@
 from parcels import Grid, Particle, JITParticle
-from parcels import AdvectionRK4, AdvectionEE, AdvectionRK45
+from parcels import AdvectionRK4_2D, AdvectionRK4_3D, AdvectionRK45_2D
+from parcels import AdvectionEE_2D, AdvectionEE_3D
 from argparse import ArgumentParser
 import numpy as np
 import math
@@ -7,7 +8,9 @@ import pytest
 from datetime import timedelta as delta
 
 
-method = {'RK4': AdvectionRK4, 'EE': AdvectionEE, 'RK45': AdvectionRK45}
+method = {'RK4_2D': AdvectionRK4_2D, 'RK4_3D': AdvectionRK4_3D,
+          'EE_2D': AdvectionEE_2D, 'EE_3D': AdvectionEE_3D,
+          'RK45': AdvectionRK45_2D}
 
 
 def moving_eddies_grid(xdim=200, ydim=350):
@@ -66,7 +69,7 @@ def moving_eddies_grid(xdim=200, ydim=350):
 
 
 def moving_eddies_example(grid, npart=2, mode='jit', verbose=False,
-                          method=AdvectionRK4):
+                          method=AdvectionRK4_2D):
     """Configuration of a particle set that follows two moving eddies
 
     :arg grid: :class Grid: that defines the flow field
@@ -75,7 +78,7 @@ def moving_eddies_example(grid, npart=2, mode='jit', verbose=False,
     # Determine particle class according to mode
     ParticleClass = JITParticle if mode == 'jit' else Particle
     pset = grid.ParticleSet(size=npart, pclass=ParticleClass,
-                            start=(3.3, 46.), finish=(3.3, 47.8))
+                            start=(3.3, 46., 0.), finish=(3.3, 47.8, 0.))
 
     if verbose:
         print("Initial particle positions:\n%s" % pset)
@@ -95,14 +98,14 @@ def moving_eddies_example(grid, npart=2, mode='jit', verbose=False,
 
 @pytest.mark.parametrize('mode', ['scipy', 'jit'])
 def test_moving_eddies_fwdbwd(mode, npart=2):
-    method = AdvectionRK4
+    method = AdvectionRK4_2D
     grid = moving_eddies_grid()
 
     # Determine particle class according to mode
     ParticleClass = JITParticle if mode == 'jit' else Particle
 
     pset = grid.ParticleSet(size=npart, pclass=ParticleClass,
-                            start=(3.3, 46.), finish=(3.3, 47.8))
+                            start=(3.3, 46., 0.), finish=(3.3, 47.8, 0.))
 
     # Execte for 14 days, with 30sec timesteps and hourly output
     endtime = delta(days=1)
@@ -160,8 +163,8 @@ Example of particle advection around an idealised peninsula""")
                    help='Print profiling information after run')
     p.add_argument('-g', '--grid', type=int, nargs=2, default=None,
                    help='Generate grid file with given dimensions')
-    p.add_argument('-m', '--method', choices=('RK4', 'EE', 'RK45'), default='RK4',
-                   help='Numerical method used for advection')
+    p.add_argument('-m', '--method', choices=('RK4_2D', 'RK4_3D', 'EE_2D', 'EE_3D', 'RK45'),
+                   default='RK4_2D', help='Numerical method used for advection')
     args = p.parse_args()
     filename = 'moving_eddies'
 
