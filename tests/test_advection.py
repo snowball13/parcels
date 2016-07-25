@@ -1,5 +1,5 @@
 from parcels import Grid, Particle, JITParticle
-from parcels import AdvectionEE_2D, AdvectionRK4_2D, AdvectionRK45_2D
+from parcels import AdvectionEE_2D, AdvectionRK4_2D, AdvectionRK4_3D, AdvectionRK45_2D
 import numpy as np
 import pytest
 import math
@@ -59,6 +59,29 @@ def test_advection_meridional(lon, lat, mode, npart=10):
     delta_lat = np.diff(np.array([p.lat for p in pset]))
     pset.execute(AdvectionRK4_2D, endtime=delta(hours=2), dt=delta(seconds=30))
     assert np.allclose(np.diff(np.array([p.lat for p in pset])), delta_lat, rtol=1.e-4)
+
+
+def grid_vertical(w_velocity=-1.e-4, xdim=20, ydim=20, zdim=100, tdim=1):
+    depth = np.linspace(0, 500, zdim, dtype=np.float32)
+    lon = np.linspace(0., 1., xdim, dtype=np.float32)
+    lat = np.linspace(0., 1., ydim, dtype=np.float32)
+    time = np.zeros(tdim, dtype=np.float64)
+    U = np.zeros((xdim, ydim, zdim), dtype=np.float32)
+    V = np.zeros((xdim, ydim, zdim), dtype=np.float32)
+    W = np.zeros((xdim, ydim, zdim), dtype=np.float32) + w_velocity
+    return Grid.from_data(U, lon, lat, V, lon, lat, depth=depth,
+                          time=time, field_data={'W': W})
+
+
+@pytest.mark.parametrize('mode', ['scipy', 'jit'])
+def test_advection_vertical(mode, npart=1, w_velocity=-1.e-4):
+    grid = grid_vertical(w_velocity)
+    pset = grid.ParticleSet(npart, pclass=ptype[mode],
+                            start=(0, 0, 0.), finish=(0, 0, 0.))
+    time = delta(days=1)
+    pset.execute(AdvectionRK4_3D, endtime=time, dt=delta(minutes=5))
+    err_adv = np.array([abs(-p.dep - w_velocity*time.total_seconds()) for p in pset])
+    assert(err_adv <= 1.e-3).all()
 
 
 def truth_stationary(x_0, y_0, t):
