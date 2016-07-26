@@ -1,4 +1,4 @@
-from parcels.grid import *  # NOQA get flake8 to ignore unused import.
+from parcels.grid import *  # NOQA
 from parcels.particle import *  # NOQA
 from parcels.field import *  # NOQA
 from parcels.kernel import *  # NOQA

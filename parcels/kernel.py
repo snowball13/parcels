@@ -9,8 +9,8 @@ from copy import deepcopy
 import re
 from hashlib import md5
 from enum import Enum
-import math  # NOQA get flake8 to ignore unused import.
-import random  # NOQA get flake8 to ignore unused import.
+import math  # NOQA
+import random  # NOQA
 
 
 __all__ = ['Kernel', 'KernelOp']
