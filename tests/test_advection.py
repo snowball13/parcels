@@ -173,7 +173,7 @@ def truth_decaying(x_0, y_0, t):
 
 
 @pytest.fixture
-def grid_decaying(xdim=100, ydim=100, maxtime=delta(hours=6)):
+def grid_decaying(xdim=100, ydim=100, zdim=1, maxtime=delta(hours=6)):
     """Generate a grid encapsulating the flow field of a decaying eddy.
 
     Reference: N. Fabbroni, 2009, "Numerical simulations of passive
@@ -181,12 +181,15 @@ def grid_decaying(xdim=100, ydim=100, maxtime=delta(hours=6)):
     """
     lon = np.linspace(0, 25000, xdim, dtype=np.float32)
     lat = np.linspace(0, 25000, ydim, dtype=np.float32)
+    dep = np.linspace(0, 25000, ydim, dtype=np.float32)
     time = np.arange(0., maxtime.total_seconds(), 60., dtype=np.float64)
-    U = np.ones((xdim, ydim, 1), dtype=np.float32) * u_g *\
+    U = np.ones((xdim, ydim, zdim, 1), dtype=np.float32) * u_g *\
         np.exp(-gamma_g * time) + (u_0 - u_g) * np.exp(-gamma * time) * np.cos(f * time)
-    V = np.ones((xdim, ydim, 1), dtype=np.float32) * -(u_0 - u_g) *\
+    V = np.ones((xdim, ydim, zdim, 1), dtype=np.float32) * -(u_0 - u_g) *\
         np.exp(-gamma * time) * np.sin(f * time)
-    return Grid.from_data(U, lon, lat, V, lon, lat, time=time, mesh='flat')
+    W = np.zeros((xdim, ydim, zdim, time.size), dtype=np.float32)
+    return Grid.from_data(U, lon, lat, V, lon, lat, depth=dep, time=time,
+                          mesh='flat', field_data={'W': W})
 
 
 @pytest.mark.parametrize('mode', ['scipy', 'jit'])
@@ -205,6 +208,30 @@ def test_decaying_eddy(grid_decaying, mode, method, rtol, npart=1):
     exp_lat = [truth_decaying(x, y, endtime)[1] for x, y, in zip(lon, lat)]
     assert np.allclose(np.array([p.lon for p in pset]), exp_lon, rtol=rtol)
     assert np.allclose(np.array([p.lat for p in pset]), exp_lat, rtol=rtol)
+
+
+@pytest.mark.parametrize('mode', ['scipy', 'jit'])
+@pytest.mark.parametrize('method, rtol', [
+    ('EE', 1e-2),
+    ('RK4', 1e-5),
+    ('RK45', 1e-5)])
+def test_decaying_eddy_vertical(mode, method, rtol, npart=1):
+    grid = grid_decaying(xdim=20, ydim=20, zdim=20)
+    tmp = grid.W.data
+    grid.W.data = grid.U.data
+    grid.U.data = tmp
+    lon = np.ones(npart, dtype=np.float32)
+    dep = np.linspace(12000, 21000, npart, dtype=np.float32)
+    lat = np.linspace(12500, 12500, npart, dtype=np.float32)
+    pset = grid.ParticleSet(size=npart, pclass=ptype[mode], lon=lon, lat=lat, dep=dep)
+    endtime = delta(hours=6).total_seconds()
+    pset.execute(kernel[method], dt=delta(minutes=3), endtime=endtime)
+    print pset
+    exp_dep = [truth_decaying(z, y, endtime)[0] for z, y, in zip(dep, lat)]
+    exp_lat = [truth_decaying(z, y, endtime)[1] for z, y, in zip(dep, lat)]
+    print exp_dep
+    assert np.allclose(np.array([p.lat for p in pset]), exp_lat, rtol=rtol)
+    assert np.allclose(np.array([p.dep for p in pset]), exp_dep, rtol=rtol)
 
 
 if __name__ == "__main__":
