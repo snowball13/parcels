@@ -1,5 +1,5 @@
 from parcels import Grid, Particle, JITParticle
-from parcels import AdvectionEE_2D, AdvectionRK4_2D, AdvectionRK4_3D, AdvectionRK45_2D
+from parcels import AdvectionEE_2D, AdvectionEE_3D, AdvectionRK4_2D, AdvectionRK4_3D, AdvectionRK45_2D
 import numpy as np
 import pytest
 import math
@@ -8,7 +8,8 @@ from argparse import ArgumentParser
 
 
 ptype = {'scipy': Particle, 'jit': JITParticle}
-kernel = {'EE': AdvectionEE_2D, 'RK4': AdvectionRK4_2D, 'RK45': AdvectionRK45_2D}
+kernel = {'EE': AdvectionEE_2D, 'RK4': AdvectionRK4_2D, 'RK45': AdvectionRK45_2D,
+          'EE3D': AdvectionEE_3D, 'RK43D': AdvectionRK4_3D}
 
 # Some constants
 f = 1.e-4
@@ -181,7 +182,7 @@ def grid_decaying(xdim=100, ydim=100, zdim=1, maxtime=delta(hours=6)):
     """
     lon = np.linspace(0, 25000, xdim, dtype=np.float32)
     lat = np.linspace(0, 25000, ydim, dtype=np.float32)
-    dep = np.linspace(0, 25000, ydim, dtype=np.float32)
+    dep = np.linspace(0, 25000, zdim, dtype=np.float32)
     time = np.arange(0., maxtime.total_seconds(), 60., dtype=np.float64)
     U = np.ones((xdim, ydim, zdim, 1), dtype=np.float32) * u_g *\
         np.exp(-gamma_g * time) + (u_0 - u_g) * np.exp(-gamma * time) * np.cos(f * time)
@@ -212,13 +213,12 @@ def test_decaying_eddy(grid_decaying, mode, method, rtol, npart=1):
 
 @pytest.mark.parametrize('mode', ['scipy', 'jit'])
 @pytest.mark.parametrize('method, rtol', [
-    ('EE', 1e-2),
-    ('RK4', 1e-5),
-    ('RK45', 1e-5)])
+    ('EE3D', 1e-2),
+    ('RK43D', 1e-5)])  # NOTE ADVECTIONRK45_#D NOT IMPLEMENTED YET
 def test_decaying_eddy_vertical(mode, method, rtol, npart=1):
     grid = grid_decaying(xdim=20, ydim=20, zdim=20)
     tmp = grid.W.data
-    grid.W.data = grid.U.data
+    grid.W.data = -grid.U.data  # NOTE NEGATING VELOCITIES BECAUSE OF W SIGN CONVENTION
     grid.U.data = tmp
     lon = np.ones(npart, dtype=np.float32)
     dep = np.linspace(12000, 21000, npart, dtype=np.float32)
@@ -226,10 +226,8 @@ def test_decaying_eddy_vertical(mode, method, rtol, npart=1):
     pset = grid.ParticleSet(size=npart, pclass=ptype[mode], lon=lon, lat=lat, dep=dep)
     endtime = delta(hours=6).total_seconds()
     pset.execute(kernel[method], dt=delta(minutes=3), endtime=endtime)
-    print pset
     exp_dep = [truth_decaying(z, y, endtime)[0] for z, y, in zip(dep, lat)]
     exp_lat = [truth_decaying(z, y, endtime)[1] for z, y, in zip(dep, lat)]
-    print exp_dep
     assert np.allclose(np.array([p.lat for p in pset]), exp_lat, rtol=rtol)
     assert np.allclose(np.array([p.dep for p in pset]), exp_dep, rtol=rtol)
 
