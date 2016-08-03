@@ -251,7 +251,7 @@ class Field(object):
             return RegularGridInterpolator((self.lat, self.lon),
                                            self.data[t_idx, z_idx, :, :])
 
-    def interpolator1D(self, idx, time, y, x):
+    def interpolator1D(self, idx, time, z, y, x):
         # Return linearly interpolated field value:
         if x is None and y is None:
             t0 = self.time[idx-1]
@@ -259,8 +259,12 @@ class Field(object):
             f0 = self.data[idx-1, :]
             f1 = self.data[idx, :]
         else:
-            f0 = self.interpolator2D(idx-1)((y, x))
-            f1 = self.interpolator2D(idx)((y, x))
+            if self.depth.size == 1:
+                f0 = self.interpolator2D(idx-1)((y, x))
+                f1 = self.interpolator2D(idx)((y, x))
+            else:
+                f0 = self.interpolator3D(idx-1, time, z, y, x)
+                f1 = self.interpolator3D(idx, time, z, y, x)           
             t0 = self.time[idx-1]
             t1 = self.time[idx]
         return f0 + (f1 - f0) * ((time - t0) / (t1 - t0))
@@ -279,7 +283,7 @@ class Field(object):
     def eval(self, time, x, y, z):
         idx = self.find_higher_index('time', time)
         if idx > 0:
-            value = self.interpolator1D(idx, time, y, x)
+            value = self.interpolator1D(idx, time, z, y, x)
         elif self.depth.size == 1:
             value = self.interpolator2D(idx)((y, x))
         else:
