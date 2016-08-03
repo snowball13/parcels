@@ -264,7 +264,7 @@ class Field(object):
                 f1 = self.interpolator2D(idx)((y, x))
             else:
                 f0 = self.interpolator3D(idx-1, time, z, y, x)
-                f1 = self.interpolator3D(idx, time, z, y, x)           
+                f1 = self.interpolator3D(idx, time, z, y, x)
             t0 = self.time[idx-1]
             t1 = self.time[idx]
         return f0 + (f1 - f0) * ((time - t0) / (t1 - t0))
