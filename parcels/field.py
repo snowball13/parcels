@@ -118,13 +118,13 @@ class Field(object):
     :param transpose: Transpose data to required (lon, lat) layout
     """
 
-    def __init__(self, name, data, lon, lat, depth, time=None,
+    def __init__(self, name, data, lon, lat, depth=None, time=None,
                  transpose=False, vmin=None, vmax=None, time_origin=0, units=None):
         self.name = name
         self.data = data
         self.lon = lon
         self.lat = lat
-        self.depth = depth
+        self.depth = np.zeros(1, dtype=np.float32) if depth is None else depth
         self.time = np.zeros(1, dtype=np.float64) if time is None else time
         self.time_origin = time_origin
         self.units = units if units is not None else UnitConverter()
@@ -143,11 +143,9 @@ class Field(object):
             # Make a copy of the transposed array to enforce
             # C-contiguous memory layout for JIT mode.
             self.data = np.transpose(self.data).copy()
-        if self.depth.size > 1:
-            self.data = self.data.reshape((self.time.size, self.depth.size,
-                                           self.lat.size, self.lon.size))
-        else:
-            self.data = self.data.reshape((self.time.size, self.lat.size, self.lon.size))
+        # Ensure internal data layout is always (time, depth, lat, lon)
+        self.data = self.data.reshape((self.time.size, self.depth.size,
+                                       self.lat.size, self.lon.size))
 
         # Hack around the fact that NaN and ridiculously large values
         # propagate in SciPy's interpolators
@@ -257,50 +255,47 @@ class Field(object):
     def depth_index(self, depth):
         return _linear_search(self.depth, depth)
 
-    def interpolator3D(self, idx, time, z, y, x):
-        # First interpolate in the horizontal, then in the vertical
+    @cachedmethod(operator.attrgetter('interpolator_cache'))
+    def interpolator2D(self, t_idx, z_idx):
+        """A cached 2D grid interpolator object provided by SciPy.interpolate"""
+        return RegularGridInterpolator((self.lat, self.lon),
+                                       self.data[t_idx, z_idx, :, :])
+
+    def interpolator3D(self, t_idx, z, y, x):
+        """Interpolate linearly in space for a given time value and index
+
+        We defer to scipy.interpolate to perform linear interpolation
+        in the horizontal and interpolate linearly in the vertical.
+        """
         z_idx = self.depth_index(z)
-        f0 = self.interpolator2D(idx, z_idx=z_idx-1)((y, x))
-        f1 = self.interpolator2D(idx, z_idx=z_idx)((y, x))
-        z0 = self.depth[z_idx-1]
-        z1 = self.depth[z_idx]
+        if self.depth[z_idx] == z:
+            # No need to interpolate in the vertical
+            return self.interpolator2D(t_idx, z_idx)((y, x))
+        else:
+            f0 = self.interpolator2D(t_idx, z_idx-1)((y, x))
+            f1 = self.interpolator2D(t_idx, z_idx)((y, x))
+            z0 = self.depth[z_idx-1]
+            z1 = self.depth[z_idx]
         return f0 + (f1 - f0) * ((z - z0) / (z1 - z0))
 
-    @cachedmethod(operator.attrgetter('interpolator_cache'))
-    def interpolator2D(self, t_idx, z_idx=None):
-        if z_idx is None:
-            return RegularGridInterpolator((self.lat, self.lon),
-                                           self.data[t_idx, :])
-        else:
-            return RegularGridInterpolator((self.lat, self.lon),
-                                           self.data[t_idx, z_idx, :, :])
-
-    def interpolator1D(self, idx, time, z, y, x):
-        # Return linearly interpolated field value:
-        if x is None and y is None:
-            t0 = self.time[idx-1]
-            t1 = self.time[idx]
-            f0 = self.data[idx-1, :]
-            f1 = self.data[idx, :]
-        else:
-            if self.depth.size == 1:
-                f0 = self.interpolator2D(idx-1)((y, x))
-                f1 = self.interpolator2D(idx)((y, x))
-            else:
-                f0 = self.interpolator3D(idx-1, time, z, y, x)
-                f1 = self.interpolator3D(idx, time, z, y, x)
-            t0 = self.time[idx-1]
-            t1 = self.time[idx]
-        return f0 + (f1 - f0) * ((time - t0) / (t1 - t0))
-
     def eval(self, time, x, y, z):
+        """Interpolate field values in space and time.
+
+        We interpolate linearly in space and time and apply unit
+        implicit unit conversion to the result. Note that we defer to
+        scipy.interpolate to perform linear interpolation in the
+        horizontal and interpolate linearly in the vertical and in
+        time.
+        """
         t_idx = self.time_index(time)
-        if t_idx > 0:
-            value = self.interpolator1D(t_idx, time, z, y, x)
-        elif self.depth.size == 1:
-            value = self.interpolator2D(t_idx)((y, x))
+        if self.time[t_idx] == time or t_idx < 0:
+            value = self.interpolator3D(t_idx, z, y, x)
         else:
-            value = self.interpolator3D(t_idx, time, z, y, x)
+            f0 = self.interpolator3D(t_idx-1, z, y, x)
+            f1 = self.interpolator3D(t_idx, z, y, x)
+            t0 = self.time[t_idx-1]
+            t1 = self.time[t_idx]
+            value = f0 + (f1 - f0) * ((time - t0) / (t1 - t0))
         return self.units.to_target(value, x, y, z)
 
     def ccode_subscript(self, t, x, y, z):
