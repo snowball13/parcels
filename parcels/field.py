@@ -18,6 +18,21 @@ except:
 __all__ = ['CentralDifferences', 'Field', 'Geographic', 'GeographicPolar']
 
 
+def _linear_search(array, val):
+    """Find the first index of a value >= val in a given array
+
+    Note that we assume array values to be sorted and increasing and
+    we return -1 if val is > the last known array value.
+    """
+    index = array < val
+    if index.all():
+        # If given var > last known grid index, use
+        # the last grid frame without interpolation
+        return -1
+    else:
+        return index.argmin()
+
+
 def CentralDifferences(field_data, lat, lon):
     r = 6.371e6  # radius of the earth
     deg2rd = np.pi / 180
@@ -147,8 +162,9 @@ class Field(object):
         self.ccode_lon = self.name + "_lon"
         self.ccode_lat = self.name + "_lat"
 
-        self.interpolator_cache = LRUCache(maxsize=2)
-        self.find_higher_index_cache = LRUCache(maxsize=2)
+        self.interpolator_cache = LRUCache(maxsize=4)
+        self.time_index_cache = LRUCache(maxsize=2)
+        self.depth_index_cache = LRUCache(maxsize=2)
 
     @classmethod
     def from_netcdf(cls, name, dimensions, filenames, **kwargs):
@@ -233,13 +249,21 @@ class Field(object):
         return([Field(name + '_dx', dVdx, lon, lat, self.depth, time),
                 Field(name + '_dy', dVdy, lon, lat, self.depth, time)])
 
+    @cachedmethod(operator.attrgetter('time_index_cache'))
+    def time_index(self, time):
+        return _linear_search(self.time, time)
+
+    @cachedmethod(operator.attrgetter('depth_index_cache'))
+    def depth_index(self, depth):
+        return _linear_search(self.depth, depth)
+
     def interpolator3D(self, idx, time, z, y, x):
         # First interpolate in the horizontal, then in the vertical
-        zdx = self.find_higher_index('depth', z)
-        f0 = self.interpolator2D(idx, z_idx=zdx-1)((y, x))
-        f1 = self.interpolator2D(idx, z_idx=zdx)((y, x))
-        z0 = self.depth[zdx-1]
-        z1 = self.depth[zdx]
+        z_idx = self.depth_index(z)
+        f0 = self.interpolator2D(idx, z_idx=z_idx-1)((y, x))
+        f1 = self.interpolator2D(idx, z_idx=z_idx)((y, x))
+        z0 = self.depth[z_idx-1]
+        z1 = self.depth[z_idx]
         return f0 + (f1 - f0) * ((z - z0) / (z1 - z0))
 
     @cachedmethod(operator.attrgetter('interpolator_cache'))
@@ -269,25 +293,14 @@ class Field(object):
             t1 = self.time[idx]
         return f0 + (f1 - f0) * ((time - t0) / (t1 - t0))
 
-    @cachedmethod(operator.attrgetter('find_higher_index_cache'))
-    def find_higher_index(self, field, var):
-        field = getattr(self, field)
-        index = field < var
-        if index.all():
-            # If given var > last known grid index, use
-            # the last grid frame without interpolation
-            return -1
-        else:
-            return index.argmin()
-
     def eval(self, time, x, y, z):
-        idx = self.find_higher_index('time', time)
-        if idx > 0:
-            value = self.interpolator1D(idx, time, z, y, x)
+        t_idx = self.time_index(time)
+        if t_idx > 0:
+            value = self.interpolator1D(t_idx, time, z, y, x)
         elif self.depth.size == 1:
-            value = self.interpolator2D(idx)((y, x))
+            value = self.interpolator2D(t_idx)((y, x))
         else:
-            value = self.interpolator3D(idx, time, z, y, x)
+            value = self.interpolator3D(t_idx, time, z, y, x)
         return self.units.to_target(value, x, y, z)
 
     def ccode_subscript(self, t, x, y, z):
@@ -323,9 +336,9 @@ class Field(object):
 
         t = kwargs.get('t', 0)
         animation = kwargs.get('animation', False)
-        idx = self.find_higher_index('time', t)
+        t_idx = self.time_index(t)
         if self.time.size > 1:
-            data = np.squeeze(self.interpolator1D(idx, t, None, None))
+            data = np.squeeze(self.interpolator1D(t_idx, t, None, None))
         elif self.data.ndim == 3:
             data = np.squeeze(self.data[0, :, :])
         elif self.data.ndim == 4:
