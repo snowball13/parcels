@@ -41,22 +41,23 @@ static inline float spatial_interpolation_bilinear(float x, float y, int i, int 
         / ((lon[i+1] - lon[i]) * (lat[j+1] - lat[j]));
 }
 
+/* Interpolate field values in space and time.
 
-/* Linear interpolation along the time axis */
-static inline float temporal_interpolation_linear(float x, float y, int xi, int yi,
-                                                  double time, CField *f)
+This routine is the logical equivalent of Field.eval(time, x, y, z).
+*/
+static inline float field_eval(CField *f, double time, float depth, float x, float y, int xi, int yi)
 {
-  /* Cast data array intp data[time][lat][lon] as per NEMO convention */
   float (*data)[f->ydim][f->xdim] = (float (*)[f->ydim][f->xdim]) f->data;
   float f0, f1;
   double t0, t1;
   int i = xi, j = yi;
-  /* Identify grid cell to sample through local linear search */
-  i = search_linear_float(x, i, f->xdim, f->lon);
-  j = search_linear_float(y, j, f->ydim, f->lat);
   /* Find time index for temporal interpolation */
   f->tidx = search_linear_double(time, f->tidx, f->tdim, f->time);
-  if (f->tidx < f->tdim-1 && time > f->time[f->tidx]) {
+  /* If the time index is otside the known time range we extrapoalate */
+  if (f->tidx < 0) f->tidx = 0;
+  if (f->tidx >= f->tdim) f->tidx = f->tdim - 1;
+  if (time != f->time[f->tidx] && f->tidx < f->tdim - 1) {
+    /* Interpolate linearly in time */
     t0 = f->time[f->tidx]; t1 = f->time[f->tidx+1];
     f0 = spatial_interpolation_bilinear(x, y, i, j, f->xdim, f->lon, f->lat, (float**)(data[f->tidx]));
     f1 = spatial_interpolation_bilinear(x, y, i, j, f->xdim, f->lon, f->lat, (float**)(data[f->tidx+1]));

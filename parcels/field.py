@@ -299,9 +299,9 @@ class Field(object):
         return self.units.to_target(value, x, y, z)
 
     def ccode_subscript(self, t, x, y, z):
-        ccode = "%s * temporal_interpolation_linear(%s, %s, %s, %s, %s, %s)" \
+        ccode = "%s * field_eval(%s, %s, %s, %s, %s, %s, %s)" \
                 % (self.units.ccode_to_target(x, y, z),
-                   x, y, "particle->xi", "particle->yi", t, self.name)
+                   self.name, t, z, x, y, "particle->xi", "particle->yi")
         return ccode
 
     @property
