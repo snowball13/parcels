@@ -29,7 +29,7 @@ for i in xrange(P.shape[0]):         # Rewrite land_mask to ouline the coast.
 
 
 plt.contourf(range(P.shape[1]), range(P.shape[0]), land_mask)
-plt.show()
+# plt.show()
 
 
 rootgrp = Dataset("test.nc", "w",
