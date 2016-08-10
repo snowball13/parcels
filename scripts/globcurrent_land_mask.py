@@ -22,7 +22,7 @@ land_mask = np.zeros(np.shape(P))
 
 for i in xrange(P.shape[0]):         # Rewrite land_mask to ouline the coast.
     for j in xrange(P.shape[1]):
-        if np.isnan(P[i, j]) is False:
+        if not np.isnan(P[i, j]):
             land_mask[i, j] = 1
         else:
             land_mask[i, j] = 0       # 1 represents land, 0 represents ocean
@@ -59,5 +59,6 @@ filenames = {'landmass': 'test.nc'}
 variables = {'landmass': 'land'}
 dimensions = {'lat': 'latitude', 'lon': 'longitude', 'time': 'time'}
 
-# Attempt to run the file but it fails - the landmass doesn't have a time dimension.
-grid = Grid.from_netcdf(filenames, variables, dimensions)
+
+def test_mask_grid():
+    grid = Grid.from_netcdf(filenames, variables, dimensions) # Test included to enforce pytest failure.
