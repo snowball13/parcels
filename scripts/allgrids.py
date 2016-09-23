@@ -6,17 +6,22 @@ from datetime import timedelta as delta
 
 class import_grid:
 
-    def __init__(self, xdim=300, ydim=300):
+    def __init__(self, xdim=300, ydim=300, days=None, timestep=None):
         self.xdim = xdim
         self.ydim = ydim
-        self.depth = np.zeros(1, dtype=np.float32)  # NEMO grid variable.
+        # Define NEMO grid variables. Generate time dimension for time-indep. grids.
+        self.depth = np.zeros(1, dtype=np.float32)
+        if days is None:
+            self.time = np.zeros(1, dtype=np.float64)
+        else:
+            self.time = np.arange(0., days * 86400., timestep)
         # Define arrays U (zonal), V (meridional), W (vertical) and P (sea
         # surface height) all on A-grid
-        self.U = np.zeros((self.xdim, self.ydim), dtype=np.float32)
-        self.V = np.zeros((self.xdim, self.ydim), dtype=np.float32)
-        self.W = np.zeros((self.xdim, self.ydim), dtype=np.float32)
-        self.P = np.zeros((self.xdim, self.ydim), dtype=np.float32)
-
+        self.U = np.zeros((self.xdim, self.ydim, self.time.size), dtype=np.float32)
+        self.V = np.zeros((self.xdim, self.ydim, self.time.size), dtype=np.float32)
+        self.W = np.zeros((self.xdim, self.ydim, self.time.size), dtype=np.float32)
+        self.P = np.zeros((self.xdim, self.ydim, self.time.size), dtype=np.float32)
+        self.corio_0 = 1.e-4  # Coriolis parameter
 
     def moving_eddies_grid(self):
         """Generate a grid encapsulating the flow field consisting of two
@@ -25,8 +30,10 @@ class import_grid:
         Note that this is not a proper geophysical flow. Rather, a Gaussian eddy is moved
         artificially with uniform velocities. Velocities are calculated from geostrophy.
         """
-        # Set NEMO grid variables
         time = np.arange(0., 25. * 86400., 86400., dtype=np.float64)
+        self.U = np.zeros((self.xdim, self.ydim, time.size), dtype=np.float32)  # Need to redefine fields for new time dimension.
+        self.V = np.zeros((self.xdim, self.ydim, time.size), dtype=np.float32)
+        self.P = np.zeros((self.xdim, self.ydim, time.size), dtype=np.float32)
 
         # Coordinates of the test grid (on A-grid in deg)
         lon = np.linspace(0, 4, self.xdim, dtype=np.float32)
@@ -39,7 +46,6 @@ class import_grid:
         dy = (lat[1] - lat[0]) * 1852 * 60
 
         # Some constants
-        corio_0 = 1.e-4  # Coriolis parameter
         h0 = 1  # Max eddy height
         sig = 0.5  # Eddy e-folding decay scale (in degrees)
         g = 10  # Gravitational constant
@@ -57,11 +63,11 @@ class import_grid:
             self.P[:, :, t] = h0 * np.exp(-(x-hxmax_1)**2/(sig*lon.size/4.)**2-(y-hymax_1)**2/(sig*lat.size/7.)**2)
             self.P[:, :, t] += h0 * np.exp(-(x-hxmax_2)**2/(sig*lon.size/4.)**2-(y-hymax_2)**2/(sig*lat.size/7.)**2)
 
-            self.V[:-1, :, t] = -np.diff(P[:, :, t], axis=0) / dx / corio_0 * g
-            self.V[-1, :, t] = V[-2, :, t]  # Fill in the last column
+            self.V[:-1, :, t] = -np.diff(self.P[:, :, t], axis=0) / dx / self.corio_0 * g
+            self.V[-1, :, t] = self.V[-2, :, t]  # Fill in the last column
 
-            self.U[:, :-1, t] = np.diff(P[:, :, t], axis=1) / dy / corio_0 * g
-            self.U[:, -1, t] = U[:, -2, t]  # Fill in the last row
+            self.U[:, :-1, t] = np.diff(self.P[:, :, t], axis=1) / dy / self.corio_0 * g
+            self.U[:, -1, t] = self.U[:, -2, t]  # Fill in the last row
 
         return Grid.from_data(self.U, lon, lat, self.V, lon, lat, self.depth, time, field_data={'P': self.P})
 
@@ -74,9 +80,6 @@ class import_grid:
         Ph.D. dissertation, University of Bologna
         http://amsdottorato.unibo.it/1733/1/Fabbroni_Nicoletta_Tesi.pdf
         """
-        # Set NEMO grid variables
-        time = np.linspace(0., 100000. * 86400., 2, dtype=np.float64)
-
         # Some constants
         A = 100
         eps = 0.05
@@ -87,16 +90,12 @@ class import_grid:
         lon = np.linspace(0, a, self.xdim, dtype=np.float32)
         lat = np.linspace(0, b, self.ydim, dtype=np.float32)
 
-        self.U = np.zeros((lon.size, lat.size, time.size), dtype=np.float32)
-        self.V = np.zeros((lon.size, lat.size, time.size), dtype=np.float32)
-        self.P = np.zeros((lon.size, lat.size, time.size), dtype=np.float32)
-
         [x, y] = np.mgrid[:lon.size, :lat.size]
         l1 = (-1 + math.sqrt(1 + 4 * math.pi**2 * eps**2)) / (2 * eps)
         l2 = (-1 - math.sqrt(1 + 4 * math.pi**2 * eps**2)) / (2 * eps)
         c1 = (1 - math.exp(l2)) / (math.exp(l2) - math.exp(l1))
         c2 = -(1 + c1)
-        for t in range(time.size):
+        for t in range(self.time.size):
             for i in range(lon.size):
                 for j in range(lat.size):
                     xi = lon[i] / a
@@ -109,7 +108,7 @@ class import_grid:
                 for j in range(lat.size-2):
                     self.U[i, j+1, t] = -(self.P[i, j+2, t] - self.P[i, j, t]) / (2 * b / self.ydim)
 
-        return Grid.from_data(self.U, lon, lat, self.V, lon, lat, self.depth, time, field_data={'P': self.P}, mesh='flat')
+        return Grid.from_data(self.U, lon, lat, self.V, lon, lat, self.depth, self.time, field_data={'P': self.P}, mesh='flat')
 
     def peninsula_grid(self):
         """Construct a grid encapsulating the flow field around an
@@ -130,15 +129,11 @@ class import_grid:
         problems with interpolation from A-grid to C-grid, we
         return NetCDF files that are on an A-grid.
         """
-        # Set NEMO grid variables
-        time = np.zeros(1, dtype=np.float64)
-
         # Generate the original test setup on A-grid in km
         dx = 100. / self.xdim / 2.
         dy = 50. / self.ydim / 2.
         La = np.linspace(dx, 100.-dx, self.xdim, dtype=np.float32)
         Wa = np.linspace(dy, 50.-dy, self.ydim, dtype=np.float32)
-
 
         u0 = 1
         x0 = 50.
@@ -151,16 +146,16 @@ class import_grid:
         self.V = -2*u0*R**2*((x-x0)*y)/(((x-x0)**2+y**2)**2)
 
         # Set land points to NaN
-        I = P >= 0.
-        U[I] = np.nan
-        V[I] = np.nan
-        W[I] = np.nan
+        I = self.P >= 0.
+        self.U[I] = np.nan
+        self.V[I] = np.nan
+        self.W[I] = np.nan
 
         # Convert from km to lat/lon
         lon = La / 1.852 / 60.
         lat = Wa / 1.852 / 60.
 
-        return Grid.from_data(self.U, lon, lat, self.V, lon, lat, self.depth, time, field_data={'P': self.P})
+        return Grid.from_data(self.U, lon, lat, self.V, lon, lat, self.depth, self.time, field_data={'P': self.P})
 
     def radial_rotation_grid(self):  # Define 2D flat, square grid for testing purposes.
 
@@ -170,8 +165,7 @@ class import_grid:
         x0 = 30.                                   # Define the origin to be the centre of the grid.
         y0 = 30.
 
-        T = delta(days=1)
-        omega = 2*np.pi/T.total_seconds()          # Define the rotational period as 1 day.
+        omega = 2*np.pi/delta(days=1).total_seconds()          # Define the rotational period as 1 day.
 
         for i in range(lon.size):
             for j in range(lat.size):
@@ -203,19 +197,12 @@ class import_grid:
         u_0 = .3  # Initial speed in x dirrection. v_0 = 0
         gamma = 1./delta(days=2.89).total_seconds()  # Dissipitave effects due to viscousity.
         gamma_g = 1./delta(days=28.9).total_seconds()
-        f = 1.e-4  # Coriolis parameter.
-        # start_lon = [10000.]  # Define the start longitude and latitude for the particle.
-        # start_lat = [10000.]
 
-        time = np.arange(0., 2. * 86400., 60.*5., dtype=np.float64)
-        lon = np.linspace(0, 20000, 2, dtype=np.float32)         # No spatial dependence. Use 2x2 grid.
+        lon = np.linspace(0, 20000, 2, dtype=np.float32)  # No spatial dependence. Use 2x2 grid.
         lat = np.linspace(5000, 12000, 2, dtype=np.float32)
 
-        self.U = np.zeros((lon.size, lat.size, time.size), dtype=np.float32)
-        self.V = np.zeros((lon.size, lat.size, time.size), dtype=np.float32)
+        for t in range(self.time.size):
+            self.U[:, :, t] = u_g*np.exp(-gamma_g*self.time[t]) + (u_0-u_g)*np.exp(-gamma*self.time[t])*np.cos(self.corio_0*self.time[t])
+            self.V[:, :, t] = -(u_0-u_g)*np.exp(-gamma*self.time[t])*np.sin(self.corio_0*self.time[t])
 
-        for t in range(time.size):
-            self.U[:, :, t] = u_g*np.exp(-gamma_g*time[t]) + (u_0-u_g)*np.exp(-gamma*time[t])*np.cos(f*time[t])
-            self.V[:, :, t] = -(u_0-u_g)*np.exp(-gamma*time[t])*np.sin(f*time[t])
-
-        return Grid.from_data(self.U, lon, lat, self.V, lon, lat, self.depth, time, mesh='flat')
+        return Grid.from_data(self.U, lon, lat, self.V, lon, lat, self.depth, self.time, mesh='flat')

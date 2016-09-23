@@ -39,7 +39,7 @@ def decaying_moving_example(grid, mode='scipy', method=AdvectionRK4):
 
 @pytest.mark.parametrize('mode', ['scipy', 'jit'])
 def test_rotation_example(mode):
-    grid = import_grid().decaying_moving_eddy_grid()
+    grid = import_grid(days=2., timestep=60.*5.).decaying_moving_eddy_grid()
     pset = decaying_moving_example(grid, mode=mode)
     vals = true_values(pset[0].time, start_lon, start_lat)  # Calculate values for the particle.
     assert(np.allclose(np.array([[pset[0].lon], [pset[0].lat]]), vals, 1e-2))   # Check advected values against calculated values.
@@ -47,7 +47,7 @@ def test_rotation_example(mode):
 
 if __name__ == "__main__":
     filename = 'decaying_moving_eddy'
-    grid = import_grid().decaying_moving_eddy_grid()
+    grid = import_grid(days=2., timestep=60.*5.).decaying_moving_eddy_grid()
     grid.write(filename)
 
     pset = decaying_moving_example(grid)
