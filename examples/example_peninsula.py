@@ -5,69 +5,11 @@ import numpy as np
 import math  # NOQA
 import pytest
 from datetime import timedelta as delta
+from scripts.allgrids import peninsula_grid
 
 
 ptype = {'scipy': ScipyParticle, 'jit': JITParticle}
 method = {'RK4': AdvectionRK4, 'EE': AdvectionEE, 'RK45': AdvectionRK45}
-
-
-def peninsula_grid(xdim, ydim):
-    """Construct a grid encapsulating the flow field around an
-    idealised peninsula.
-
-    :param xdim: Horizontal dimension of the generated grid
-    :param xdim: Vertical dimension of the generated grid
-
-    The original test description can be found in Fig. 2.2.3 in:
-    North, E. W., Gallego, A., Petitgas, P. (Eds). 2009. Manual of
-    recommended practices for modelling physical - biological
-    interactions during fish early life.
-    ICES Cooperative Research Report No. 295. 111 pp.
-    http://archimer.ifremer.fr/doc/00157/26792/24888.pdf
-
-    Note that the problem is defined on an A-grid while NEMO
-    normally returns C-grids. However, to avoid accuracy
-    problems with interpolation from A-grid to C-grid, we
-    return NetCDF files that are on an A-grid.
-    """
-    # Set NEMO grid variables
-    depth = np.zeros(1, dtype=np.float32)
-    time = np.zeros(1, dtype=np.float64)
-
-    # Generate the original test setup on A-grid in km
-    dx = 100. / xdim / 2.
-    dy = 50. / ydim / 2.
-    La = np.linspace(dx, 100.-dx, xdim, dtype=np.float32)
-    Wa = np.linspace(dy, 50.-dy, ydim, dtype=np.float32)
-
-    # Define arrays U (zonal), V (meridional), W (vertical) and P (sea
-    # surface height) all on A-grid
-    U = np.zeros((xdim, ydim), dtype=np.float32)
-    V = np.zeros((xdim, ydim), dtype=np.float32)
-    W = np.zeros((xdim, ydim), dtype=np.float32)
-    P = np.zeros((xdim, ydim), dtype=np.float32)
-
-    u0 = 1
-    x0 = 50.
-    R = 0.32 * 50.
-
-    # Create the fields
-    x, y = np.meshgrid(La, Wa, sparse=True, indexing='ij')
-    P = u0*R**2*y/((x-x0)**2+y**2)-u0*y
-    U = u0-u0*R**2*((x-x0)**2-y**2)/(((x-x0)**2+y**2)**2)
-    V = -2*u0*R**2*((x-x0)*y)/(((x-x0)**2+y**2)**2)
-
-    # Set land points to NaN
-    I = P >= 0.
-    U[I] = np.nan
-    V[I] = np.nan
-    W[I] = np.nan
-
-    # Convert from km to lat/lon
-    lon = La / 1.852 / 60.
-    lat = Wa / 1.852 / 60.
-
-    return Grid.from_data(U, lon, lat, V, lon, lat, depth, time, field_data={'P': P})
 
 
 def UpdateP(particle, grid, time, dt):

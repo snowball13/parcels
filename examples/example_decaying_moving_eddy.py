@@ -1,6 +1,7 @@
 from parcels import Grid, ScipyParticle, JITParticle
 from parcels import AdvectionRK4
 import numpy as np
+from scripts.allgrids import decaying_moving_eddy_grid
 from datetime import timedelta as delta
 import pytest
 
@@ -14,31 +15,6 @@ gamma_g = 1./delta(days=28.9).total_seconds()
 f = 1.e-4  # Coriolis parameter.
 start_lon = [10000.]  # Define the start longitude and latitude for the particle.
 start_lat = [10000.]
-
-
-def decaying_moving_eddy_grid(xdim=2, ydim=2):  # Define 2D flat, square grid for testing purposes.
-    """Simulate an ocean that accelerates subject to Coriolis force
-    and dissipative effects, upon which a geostrophic current is
-    superimposed.
-
-    The original test description can be found in: N. Fabbroni, 2009,
-    Numerical Simulation of Passive tracers dispersion in the sea,
-    Ph.D. dissertation, University of Bologna
-    http://amsdottorato.unibo.it/1733/1/Fabbroni_Nicoletta_Tesi.pdf
-    """
-    depth = np.zeros(1, dtype=np.float32)
-    time = np.arange(0., 2. * 86400., 60.*5., dtype=np.float64)
-    lon = np.linspace(0, 20000, xdim, dtype=np.float32)
-    lat = np.linspace(5000, 12000, ydim, dtype=np.float32)
-
-    U = np.zeros((lon.size, lat.size, time.size), dtype=np.float32)
-    V = np.zeros((lon.size, lat.size, time.size), dtype=np.float32)
-
-    for t in range(time.size):
-        U[:, :, t] = u_g*np.exp(-gamma_g*time[t]) + (u_0-u_g)*np.exp(-gamma*time[t])*np.cos(f*time[t])
-        V[:, :, t] = -(u_0-u_g)*np.exp(-gamma*time[t])*np.sin(f*time[t])
-
-    return Grid.from_data(U, lon, lat, V, lon, lat, depth, time, mesh='flat')
 
 
 def true_values(t, x_0, y_0):  # Calculate the expected values for particles at the endtime, given their start location.
