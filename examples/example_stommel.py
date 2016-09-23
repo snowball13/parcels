@@ -1,10 +1,10 @@
-from parcels import Grid, ScipyParticle, JITParticle, Variable
+from parcels import ScipyParticle, JITParticle, Variable
 from parcels import AdvectionRK4, AdvectionEE, AdvectionRK45
 from argparse import ArgumentParser
 import numpy as np
 import pytest
 from datetime import timedelta as delta
-from scripts.allgrids import stommel_grid
+from scripts.allgrids import import_grid
 
 
 ptype = {'scipy': ScipyParticle, 'jit': JITParticle}
@@ -17,7 +17,7 @@ def UpdateP(particle, grid, time, dt):
 
 def stommel_example(npart=1, mode='jit', verbose=False, method=AdvectionRK4):
 
-    grid = stommel_grid()
+    grid = import_grid().stommel_grid()
     filename = 'stommel'
     grid.write(filename)
 

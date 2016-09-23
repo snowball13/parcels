@@ -1,6 +1,6 @@
-from parcels import Grid, ScipyParticle, JITParticle
+from parcels import ScipyParticle, JITParticle
 from parcels import AdvectionRK4
-from scripts.allgrids import radial_rotation_grid
+from scripts.allgrids import import_grid
 import numpy as np
 from datetime import timedelta as delta
 import math
@@ -36,7 +36,7 @@ def rotation_example(grid, mode='jit', method=AdvectionRK4):
 
 @pytest.mark.parametrize('mode', ['scipy', 'jit'])
 def test_rotation_example(mode):
-    grid = radial_rotation_grid()
+    grid = import_grid().radial_rotation_grid()
     pset = rotation_example(grid, mode=mode)
     assert(pset[0].lon == 30. and pset[0].lat == 30.)  # Particle at centre of grid remains stationary.
     vals = true_values(pset[1].time)
@@ -45,7 +45,7 @@ def test_rotation_example(mode):
 
 if __name__ == "__main__":
     filename = 'radial_rotation'
-    grid = radial_rotation_grid()
+    grid = import_grid().radial_rotation_grid()
     grid.write(filename)
 
     rotation_example(grid)

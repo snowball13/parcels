@@ -5,7 +5,7 @@ import numpy as np
 import math  # NOQA
 import pytest
 from datetime import timedelta as delta
-from scripts.allgrids import peninsula_grid
+from scripts.allgrids import import_grid
 
 
 ptype = {'scipy': ScipyParticle, 'jit': JITParticle}
@@ -66,7 +66,7 @@ def pensinsula_example(grid, npart, mode='jit', degree=1,
 @pytest.mark.parametrize('mode', ['scipy', 'jit'])
 def test_peninsula_grid(mode):
     """Execute peninsula test from grid generated in memory"""
-    grid = peninsula_grid(100, 50)
+    grid = import_grid(100, 50).peninsula_grid()
     pset = pensinsula_example(grid, 100, mode=mode, degree=1)
     # Test advection accuracy by comparing streamline values
     err_adv = np.array([abs(p.p_start - p.p) for p in pset])
@@ -80,7 +80,7 @@ def test_peninsula_grid(mode):
 def gridfile():
     """Generate grid files for peninsula test"""
     filename = 'peninsula'
-    grid = peninsula_grid(100, 50)
+    grid = import_grid(100, 50).peninsula_grid()
     grid.write(filename)
     return filename
 
@@ -121,7 +121,7 @@ Example of particle advection around an idealised peninsula""")
 
     if args.grid is not None:
         filename = 'peninsula'
-        grid = peninsula_grid(args.grid[0], args.grid[1])
+        grid = import_grid(args.grid[0], args.grid[1]).peninsula_grid()
         grid.write(filename)
 
     # Open grid file set

@@ -3,7 +3,7 @@ from parcels import AdvectionRK4, AdvectionEE, AdvectionRK45
 from argparse import ArgumentParser
 import pytest
 from datetime import timedelta as delta
-from scripts.allgrids import moving_eddies_grid
+from scripts.allgrids import import_grid
 
 
 ptype = {'scipy': ScipyParticle, 'jit': JITParticle}
@@ -40,7 +40,7 @@ def moving_eddies_example(grid, npart=2, mode='jit', verbose=False,
 @pytest.mark.parametrize('mode', ['scipy', 'jit'])
 def test_moving_eddies_fwdbwd(mode, npart=2):
     method = AdvectionRK4
-    grid = moving_eddies_grid()
+    grid = import_grid().moving_eddies_grid()
 
     # Determine particle class according to mode
     pset = grid.ParticleSet(size=npart, pclass=ptype[mode],
@@ -66,7 +66,7 @@ def test_moving_eddies_fwdbwd(mode, npart=2):
 
 @pytest.mark.parametrize('mode', ['scipy', 'jit'])
 def test_moving_eddies_grid(mode):
-    grid = moving_eddies_grid()
+    grid = import_grid().moving_eddies_grid()
     pset = moving_eddies_example(grid, 2, mode=mode)
     assert(pset[0].lon < 0.5 and 46.0 < pset[0].lat < 46.35)
     assert(pset[1].lon < 0.5 and 49.4 < pset[1].lat < 49.8)
@@ -76,7 +76,7 @@ def test_moving_eddies_grid(mode):
 def gridfile():
     """Generate grid files for moving_eddies test"""
     filename = 'moving_eddies'
-    grid = moving_eddies_grid(200, 350)
+    grid = import_grid(200, 350).moving_eddies_grid()
     grid.write(filename)
     return filename
 
@@ -109,7 +109,7 @@ Example of particle advection around an idealised peninsula""")
 
     # Generate grid files according to given dimensions
     if args.grid is not None:
-        grid = moving_eddies_grid(args.grid[0], args.grid[1])
+        grid = import_grid(args.grid[0], args.grid[1]).moving_eddies_grid()
         grid.write(filename)
 
     # Open grid files
