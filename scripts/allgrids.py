@@ -69,7 +69,7 @@ class import_grid:
             self.U[:, :-1, t] = np.diff(self.P[:, :, t], axis=1) / dy / self.corio_0 * g
             self.U[:, -1, t] = self.U[:, -2, t]  # Fill in the last row
 
-        return Grid.from_data(self.U, lon, lat, self.V, lon, lat, self.depth, time, field_data={'P': self.P})
+        return Grid.from_data(self.U, lon, lat, self.V, lon, lat, self.depth, self.time, field_data={'P': self.P})
 
     def stommel_grid(self):
         """Simulate a periodic current along a western boundary, with significantly
