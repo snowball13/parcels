@@ -1,4 +1,6 @@
 from parcels.field import Field
+from parcels.codegen.converter import ASTConverter
+
 import ast
 import cgen as c
 from collections import OrderedDict
@@ -266,6 +268,8 @@ class KernelGenerator(ast.NodeVisitor):
     def generate(self, py_ast, funcvars):
         # Untangle Pythonic tuple-assignment statements
         py_ast = TupleSplitter().visit(py_ast)
+
+        ir = ASTConverter(self.grid, self.ptype).convert(py_ast)
 
         # Replace occurences of intrinsic objects in Python AST
         transformer = IntrinsicTransformer(self.grid, self.ptype)
